@@ -8,6 +8,23 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data, 
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
 });
 
+function configurationChecks(env: Env) {
+  const hubspotToken = Boolean(env.HUBSPOT_ACCESS_TOKEN);
+  const signingSecret = Boolean(env.PROPOSAL_SIGNING_SECRET && env.PROPOSAL_SIGNING_SECRET.length >= 32);
+  const publicBaseUrl = Boolean(env.PUBLIC_BASE_URL);
+  const adminKey = Boolean(env.ADMIN_KEY && env.ADMIN_KEY.length >= 32);
+
+  return {
+    configured: hubspotToken && signingSecret && publicBaseUrl,
+    checks: {
+      hubspotToken,
+      signingSecret,
+      publicBaseUrl,
+      adminKey,
+    },
+  };
+}
+
 function assertConfigured(env: Env): void {
   if (!env.HUBSPOT_ACCESS_TOKEN) throw new Error('HUBSPOT_ACCESS_TOKEN is missing.');
   if (!env.PROPOSAL_SIGNING_SECRET || env.PROPOSAL_SIGNING_SECRET.length < 32) {
@@ -89,10 +106,11 @@ async function snapshotFromToken(env: Env, token: string): Promise<ProposalSnaps
 async function handleFetch(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname === '/' || url.pathname === '/health') {
+    const configuration = configurationChecks(env);
     return json({
       ok: true,
       service: 'Ojoor Proposal Generator',
-      configured: Boolean(env.HUBSPOT_ACCESS_TOKEN && env.PROPOSAL_SIGNING_SECRET && env.PUBLIC_BASE_URL),
+      ...configuration,
       time: new Date().toISOString(),
     });
   }
