@@ -3,15 +3,21 @@ import { buildSnapshot, createSnapshotNote, patchDeal, readSnapshotNote, searchP
 import { createPublicToken, verifyPublicToken } from './security';
 import { renderProposal } from './render';
 
+const DEFAULT_PUBLIC_BASE_URL = 'https://quote.abdallhahmed407.workers.dev';
+
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data, null, 2), {
   status,
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
 });
 
+function resolvedBaseUrl(env: Env): string {
+  return String(env.PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE_URL).trim().replace(/\/$/, '');
+}
+
 function configurationChecks(env: Env) {
   const hubspotToken = Boolean(env.HUBSPOT_ACCESS_TOKEN);
   const signingSecret = Boolean(env.PROPOSAL_SIGNING_SECRET && env.PROPOSAL_SIGNING_SECRET.length >= 32);
-  const publicBaseUrl = Boolean(env.PUBLIC_BASE_URL);
+  const publicBaseUrl = Boolean(resolvedBaseUrl(env));
   const adminKey = Boolean(env.ADMIN_KEY && env.ADMIN_KEY.length >= 32);
 
   return {
@@ -33,10 +39,10 @@ function assertConfigured(env: Env): void {
 }
 
 function baseUrl(env: Env, request?: Request): string {
-  const configured = String(env.PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
+  const configured = resolvedBaseUrl(env);
   if (configured) return configured;
   if (request) return new URL(request.url).origin;
-  throw new Error('PUBLIC_BASE_URL is missing. Add the deployed Worker URL in Cloudflare settings.');
+  return DEFAULT_PUBLIC_BASE_URL;
 }
 
 async function generateOne(env: Env, dealRecord: Record<string, any>, request?: Request): Promise<void> {
@@ -111,6 +117,7 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
       ok: true,
       service: 'Ojoor Proposal Generator',
       ...configuration,
+      publicBaseUrl: resolvedBaseUrl(env),
       time: new Date().toISOString(),
     });
   }
