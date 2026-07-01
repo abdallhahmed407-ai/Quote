@@ -1,0 +1,8 @@
+{
+  "uid": "ojoor_proposal_generator",
+  "type": "app",
+  "config": {
+    "name": "Ojoor Proposal Generator",
+    "distribution": "private"
+  }
+}
