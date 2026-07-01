@@ -1,7 +1,7 @@
 import type { Env, ProposalSnapshot } from './types';
 import { buildSnapshot, createSnapshotNote, patchDeal, readSnapshotNote, searchPendingDeals } from './hubspot';
 import { createPublicToken, verifyPublicToken } from './security';
-import { renderProposal } from './render-v3';
+import { renderProposal } from './render-exact';
 
 const DEFAULT_PUBLIC_BASE_URL = 'https://quote.abdallhahmed407.workers.dev';
 
