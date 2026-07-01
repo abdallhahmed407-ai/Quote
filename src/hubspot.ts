@@ -38,7 +38,7 @@ export async function searchPendingDeals(env: Env): Promise<JsonObject[]> {
       filterGroups: [{ filters: [{ propertyName: 'generate_proposal', operator: 'IN', values: ['generate', 'regenerate'] }] }],
       properties: DEAL_PROPERTIES,
       limit: 10,
-      sorts: [{ propertyName: 'hs_lastmodifieddate', direction: 'ASCENDING' }],
+      sorts: ['hs_lastmodifieddate'],
     }),
   });
   return result.results || [];
@@ -136,10 +136,23 @@ export async function buildSnapshot(env: Env, dealId: string, version: number): 
   };
 }
 
+function encodeSnapshot(snapshot: ProposalSnapshot): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(snapshot));
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function decodeSnapshot(value: string): ProposalSnapshot {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  const binary = atob(base64);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes)) as ProposalSnapshot;
+}
+
 function snapshotToNoteBody(snapshot: ProposalSnapshot): string {
-  const json = JSON.stringify(snapshot);
-  const encoded = btoa(unescape(encodeURIComponent(json)));
-  return `<p><strong>Ojoor Proposal V${snapshot.version}</strong> — system snapshot. Do not edit.</p><pre data-ojoor-snapshot="v1">${encoded}</pre>`;
+  const encoded = encodeSnapshot(snapshot);
+  return `<p><strong>Ojoor Proposal V${snapshot.version}</strong> — system snapshot. Do not edit.</p><p>OJOOR_SNAPSHOT_V1:${encoded}</p>`;
 }
 
 export async function createSnapshotNote(env: Env, snapshot: ProposalSnapshot): Promise<string> {
@@ -163,8 +176,7 @@ export async function createSnapshotNote(env: Env, snapshot: ProposalSnapshot): 
 export async function readSnapshotNote(env: Env, noteId: string): Promise<ProposalSnapshot> {
   const note = await request<JsonObject>(env, `/crm/v3/objects/notes/${noteId}?properties=hs_note_body`);
   const body = String(note.properties?.hs_note_body || '');
-  const match = body.match(/data-ojoor-snapshot=["']v1["'][^>]*>([A-Za-z0-9+/=]+)<\/pre>/i);
+  const match = body.match(/OJOOR_SNAPSHOT_V1:([A-Za-z0-9_-]+)/i);
   if (!match) throw new Error('Proposal snapshot was not found in HubSpot.');
-  const json = decodeURIComponent(escape(atob(match[1])));
-  return JSON.parse(json) as ProposalSnapshot;
+  return decodeSnapshot(match[1]);
 }
