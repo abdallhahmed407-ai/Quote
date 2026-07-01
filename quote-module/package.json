@@ -1,0 +1,21 @@
+{
+  "name": "ojoor-quote-template",
+  "description": "Ojoor branded HubSpot quote module",
+  "private": true,
+  "devDependencies": {
+    "@hubspot/prettier-plugin-hubl": "^0.2.5",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^8.10.0",
+    "eslint-plugin-react": "^7.37.0",
+    "prettier": "^2.8.8"
+  },
+  "scripts": {
+    "postinstall": "cd src/cms-assets/ojoor-quote-assets && npm install",
+    "start": "cd src/cms-assets/ojoor-quote-assets && npm start",
+    "typecheck": "cd src/cms-assets/ojoor-quote-assets && npm run typecheck",
+    "deploy": "hs project upload"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
