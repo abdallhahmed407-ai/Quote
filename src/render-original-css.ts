@@ -1,6 +1,9 @@
 export const ORIGINAL_DYNAMIC_CSS = `
 .ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}
-.signature-value{padding:0 4px 2px;color:#343448;font-size:12px;line-height:22px;overflow-wrap:anywhere}
+.dynamic-field{border-bottom:1px dashed #9B8ED4}
+.signature-value{flex:1;min-height:22px;padding:0 4px 2px;border-bottom:1px dashed #C4B8E8;color:#343448;font-size:12px;line-height:22px;overflow-wrap:anywhere}
+
+/* Dynamic pricing page, using the same original brand system */
 .pricing-page .inner-content{padding:34px 50px 82px}
 .pricing-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:16px}
 .pricing-head .sec-title{margin-bottom:0}
@@ -39,5 +42,44 @@ export const ORIGINAL_DYNAMIC_CSS = `
 .total-row.grand{background:linear-gradient(135deg,#1A2B6E 0%,#7B5EA7 100%);color:#fff;font-size:11.7px;font-weight:800}
 .total-row.grand span:last-child{color:#fff}
 .pricing-continuation{margin-top:15px;padding:10px 14px;border-right:4px solid #7B5EA7;border-radius:0 8px 8px 0;background:#F7F6FF;color:#55556D;font-size:10px}
-@media print{.pricing-table-frame,.pricing-bottom-grid,.pricing-meta-grid{break-inside:avoid;page-break-inside:avoid}}
+
+/* Keep the original activation page intact while fitting all copy above the footer */
+.activation-reference-page .inner-content{padding:26px 48px 66px!important}
+.activation-reference-page .sec-title{margin-bottom:12px}
+.activation-reference-page .timeline-img-wrap{margin:7px 0 8px}
+.activation-reference-page .timeline-img-wrap img{display:block;width:100%;max-height:318px;object-fit:contain}
+.activation-reference-page .sec-sub{margin:13px 0 7px;font-size:15.5px}
+.activation-reference-page p{margin-bottom:7px;font-size:11.4px;line-height:1.65}
+.activation-reference-page .schedule-table{margin:8px 0;font-size:11px}
+.activation-reference-page .schedule-table th{padding:7px 12px;font-size:11px}
+.activation-reference-page .schedule-table td{padding:6px 12px;font-size:10.8px}
+.activation-reference-page .week-pill{padding:1px 11px;font-size:10px}
+.activation-reference-page .note-box{margin:8px 0;padding:9px 14px;font-size:10.5px;line-height:1.6}
+.activation-reference-page .inner-content>p:last-child{margin-bottom:0}
+
+/* Four fixed, print-safe terms pages. Nothing can fall below the footer. */
+.terms-page .inner-content{padding:30px 50px 72px}
+.terms-page .sec-title{margin-bottom:15px}
+.terms-page .parties-row{gap:16px;margin:10px 0 15px}
+.terms-page .party-card{padding:13px 15px}
+.terms-page .party-card h3{margin-bottom:9px;padding-bottom:6px;font-size:13px}
+.terms-page .pf{margin-bottom:5px}
+.terms-page .pf-label{font-size:9.7px}
+.terms-page .pf-value{min-height:17px;padding-bottom:2px;font-size:10.5px;line-height:1.45;overflow-wrap:anywhere}
+.terms-page .terms-sec{margin:13px 0 7px;padding:6px 12px;font-size:13.5px}
+.terms-page .terms-subsec{margin:8px 0 5px;font-size:12px}
+.terms-page .terms-list{margin:0 0 7px;padding-right:21px}
+.terms-page .terms-list li{margin-bottom:4px;padding-right:2px;color:#343448;font-size:10.4px;line-height:1.58}
+.terms-page .refund-copy{margin:0;padding:14px 17px;border-right:4px solid #7B5EA7;border-radius:0 8px 8px 0;background:#F7F6FF;color:#343448;font-size:11.5px;line-height:1.85;text-align:right}
+.terms-page .sigs-row{gap:20px;margin-top:20px}
+.terms-page .sig-block{padding:16px 20px}
+.terms-page .sig-block h3{margin-bottom:15px;padding-bottom:7px;font-size:13.5px}
+.terms-page .sig-line-row{margin-bottom:14px}
+.terms-page .sl-label{font-size:11px}
+.terms-page .sl-dots{height:21px}
+.terms-page-signatures .terms-sec:nth-of-type(2){margin-top:22px}
+
+@media print{
+  .pricing-table-frame,.pricing-bottom-grid,.pricing-meta-grid,.parties-row,.party-card,.terms-sec,.terms-list,.sigs-row,.sig-block{break-inside:avoid;page-break-inside:avoid}
+}
 `;
