@@ -3,6 +3,12 @@
   "type": "app",
   "config": {
     "name": "Ojoor Proposal Generator",
-    "distribution": "private"
+    "distribution": "private",
+    "auth": {
+      "type": "static",
+      "requiredScopes": [],
+      "optionalScopes": [],
+      "conditionallyRequiredScopes": []
+    }
   }
 }
