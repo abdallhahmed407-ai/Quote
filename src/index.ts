@@ -8,6 +8,13 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data, 
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
 });
 
+function assertConfigured(env: Env): void {
+  if (!env.HUBSPOT_ACCESS_TOKEN) throw new Error('HUBSPOT_ACCESS_TOKEN is missing.');
+  if (!env.PROPOSAL_SIGNING_SECRET || env.PROPOSAL_SIGNING_SECRET.length < 32) {
+    throw new Error('PROPOSAL_SIGNING_SECRET is missing or too short. Use at least 32 random characters.');
+  }
+}
+
 function baseUrl(env: Env, request?: Request): string {
   const configured = String(env.PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
   if (configured) return configured;
@@ -16,7 +23,9 @@ function baseUrl(env: Env, request?: Request): string {
 }
 
 async function generateOne(env: Env, dealRecord: Record<string, any>, request?: Request): Promise<void> {
+  assertConfigured(env);
   const dealId = String(dealRecord.id);
+  const root = baseUrl(env, request);
   const nextVersion = (Number(dealRecord.properties?.proposal_version || 0) || 0) + 1;
 
   await patchDeal(env, dealId, {
@@ -30,7 +39,6 @@ async function generateOne(env: Env, dealRecord: Record<string, any>, request?: 
     const noteId = await createSnapshotNote(env, snapshot);
     snapshot.noteId = noteId;
     const token = await createPublicToken({ n: noteId, d: dealId, v: nextVersion }, env.PROPOSAL_SIGNING_SECRET);
-    const root = baseUrl(env, request);
     const proposalUrl = `${root}/p/${token}`;
 
     await patchDeal(env, dealId, {
@@ -70,6 +78,7 @@ async function processPending(env: Env, request?: Request): Promise<{ processed:
 }
 
 async function snapshotFromToken(env: Env, token: string): Promise<ProposalSnapshot | null> {
+  assertConfigured(env);
   const payload = await verifyPublicToken(token, env.PROPOSAL_SIGNING_SECRET);
   if (!payload?.n || !payload?.d || !payload?.v) return null;
   const snapshot = await readSnapshotNote(env, String(payload.n));
@@ -80,7 +89,20 @@ async function snapshotFromToken(env: Env, token: string): Promise<ProposalSnaps
 async function handleFetch(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname === '/' || url.pathname === '/health') {
-    return json({ ok: true, service: 'Ojoor Proposal Generator', time: new Date().toISOString() });
+    return json({
+      ok: true,
+      service: 'Ojoor Proposal Generator',
+      configured: Boolean(env.HUBSPOT_ACCESS_TOKEN && env.PROPOSAL_SIGNING_SECRET && env.PUBLIC_BASE_URL),
+      time: new Date().toISOString(),
+    });
+  }
+
+  if (url.pathname === '/admin/run' && request.method === 'POST') {
+    if (!env.ADMIN_KEY || request.headers.get('authorization') !== `Bearer ${env.ADMIN_KEY}`) {
+      return json({ error: 'Unauthorized' }, 401);
+    }
+    assertConfigured(env);
+    return json(await processPending(env, request));
   }
 
   const match = url.pathname.match(/^\/p\/([^/]+)(\/pdf)?$/);
@@ -113,6 +135,7 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'private, max-age=300',
       'x-robots-tag': 'noindex, nofollow, noarchive',
+      'referrer-policy': 'no-referrer',
       'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; frame-ancestors 'none'",
     },
   });
