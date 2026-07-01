@@ -161,7 +161,7 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
       'cache-control': 'private, max-age=300',
       'x-robots-tag': 'noindex, nofollow, noarchive',
       'referrer-policy': 'no-referrer',
-      'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; frame-ancestors 'none'",
+      'content-security-policy': "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; frame-ancestors 'none'",
     },
   });
 }
