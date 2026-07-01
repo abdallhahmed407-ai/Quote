@@ -1,52 +1,47 @@
 # Ojoor HubSpot Proposal
 
-A HubSpot-native proposal workflow designed for the Ojoor sales team.
+A HubSpot-native Arabic proposal template designed for the Ojoor sales team and based on the supplied PDF.
 
 ## Sales experience
 
 1. Open a HubSpot deal.
-2. Confirm the associated company, contact, price or line items.
-3. Click **Generate Proposal** in the **Ojoor Proposal** app card.
-4. Review the generated HubSpot quote draft and publish it.
+2. Confirm the associated company and buyer.
+3. Add products / line items, or enter a positive deal amount.
+4. Click **Create quote** in HubSpot.
+5. Choose **Ojoor Arabic Proposal**.
+6. Review and publish the quote.
 
-The sales rep never types a Deal ID. HubSpot passes the current record ID to the app card automatically.
+The sales representative never types a Deal ID. The quote is created from the currently open Deal and remains associated with it.
 
-## Projects
+## Included
 
-- `quote-module/` - Arabic custom quote module matching the supplied Ojoor PDF design.
-- `deal-card/` - optional one-click deal card and private serverless function.
+- Full Arabic 8-page quote module matching the Ojoor proposal structure.
+- Dynamic company, buyer, Deal, pricing, discount, tax, terms, sender, and signer data.
+- HubSpot Line Item pricing table.
+- Deal amount fallback when a Deal has no Line Items.
+- Print/PDF layout and responsive browser layout.
+- Deployment and property-mapping documentation.
 
-## Important account notes
-
-- The quote module is the core implementation and should be deployed first.
-- The app card with a serverless function requires a HubSpot Enterprise subscription for installation.
-- If Enterprise is not available, sales can use the native HubSpot flow: **Deal -> Create quote -> Ojoor Arabic Proposal**.
-- Keep the quote template name exactly `Ojoor Arabic Proposal`; the app card discovers it by name.
-- Quote line items are copied before association so deleting a quote cannot remove the deal's original line items.
-
-## Deploy the quote module
+## Deploy
 
 ```bash
 cd quote-module
 npm install
 hs account auth
-npm run typecheck
 npm run deploy
 ```
 
-In HubSpot, create a quote template named **Ojoor Arabic Proposal**, add the uploaded module as the only main content module, and publish the template.
+Then in HubSpot:
 
-## Deploy the optional app card
+1. Open Quote Template settings.
+2. Create a template named **Ojoor Arabic Proposal**.
+3. Add the custom module **Ojoor Arabic Proposal**.
+4. Remove duplicate standard cover, pricing, terms, and signature modules.
+5. Publish and test with a sample Deal.
 
-```bash
-cd deal-card
-npm install --prefix src/app/cards
-npm install --prefix src/app/functions
-hs account auth
-hs project upload
-```
+## One-click card
 
-Then install the private app and add the **Ojoor Proposal** card to the middle column of the Deal record layout.
+A separate Deal card can later reduce the flow to one **Generate Proposal** button. HubSpot serverless app functions used by that card require the relevant Enterprise capability, so the first production release uses HubSpot's native Create quote action for maximum compatibility.
 
 ## Data mapping
 
