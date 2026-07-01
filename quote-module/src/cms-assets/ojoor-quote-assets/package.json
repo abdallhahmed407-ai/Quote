@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "scripts": {
+    "start": "hs-cms-dev-server .",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@hubspot/cms-components": "^1.2.27",
     "react": "^18.3.1"
