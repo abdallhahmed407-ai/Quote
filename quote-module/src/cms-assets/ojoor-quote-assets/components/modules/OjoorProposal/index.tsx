@@ -2,87 +2,47 @@ import type { CSSProperties } from 'react';
 import { ModuleFields, TextField, FieldGroup, ColorField } from '@hubspot/cms-components/fields';
 import styles from './styles.module.css';
 import type { ModuleProps } from './types';
-import { buildProposalModel } from './utils';
-import { CoverPage } from './pages/CoverPage';
-import { ExecutiveSummaryPage } from './pages/ExecutiveSummaryPage';
-import { IntegrationsPage } from './pages/IntegrationsPage';
-import { PricingPage } from './pages/PricingPage';
-import { ActivationPage } from './pages/ActivationPage';
-import { TermsPage } from './pages/TermsPage';
-import { LegalPage } from './pages/LegalPage';
-import { SignaturePage } from './pages/SignaturePage';
+import { buildProposalModel, formatMoney, firstValue, asText } from './utils';
+import { Logo, PageFooter, PageHeader, PageTitle } from './shared';
+import { activationSteps, firstPartyCommitments, integrations, secondPartyCommitments } from './data';
 
 export function Component({ fieldValues, hublData }: ModuleProps) {
-  const model = buildProposalModel(fieldValues, hublData);
-  const primary = fieldValues.styles?.primaryColor?.css || '#1d347d';
-  const secondary = fieldValues.styles?.secondaryColor?.css || '#7856a7';
-  const accent = fieldValues.styles?.accentColor?.css || '#e8b86d';
+  const m = buildProposalModel(fieldValues, hublData);
   const cssVariables = {
-    '--ojoor-primary': primary,
-    '--ojoor-secondary': secondary,
-    '--ojoor-accent': accent,
+    '--ojoor-primary': fieldValues.styles?.primaryColor?.css || '#1d347d',
+    '--ojoor-secondary': fieldValues.styles?.secondaryColor?.css || '#7856a7',
+    '--ojoor-accent': fieldValues.styles?.accentColor?.css || '#e8b86d',
   } as CSSProperties;
+  const goals = ['أتمتة عمليات الموارد البشرية والرواتب','تقليل الأخطاء التشغيلية والمالية','ضمان دقة الرواتب ودعم الامتثال','تحسين تجربة الموظفين ورفع مستوى الشفافية','تمكين الإدارة من اتخاذ قرارات أسرع مبنية على البيانات'];
+  const sender = firstValue(`${asText(m.quote.hs_sender_firstname)} ${asText(m.quote.hs_sender_lastname)}`, 'ممثل أجور');
+  const buyer = m.signer ? `${m.signer.firstName} ${m.signer.lastName}` : m.contactName;
 
-  return (
-    <main className={styles.proposal} dir="rtl" style={cssVariables}>
-      <CoverPage fieldValues={fieldValues} model={model} />
-      <ExecutiveSummaryPage fieldValues={fieldValues} />
-      <IntegrationsPage fieldValues={fieldValues} />
-      <PricingPage fieldValues={fieldValues} model={model} />
-      <ActivationPage fieldValues={fieldValues} />
-      <TermsPage fieldValues={fieldValues} model={model} />
-      <LegalPage fieldValues={fieldValues} model={model} />
-      <SignaturePage fieldValues={fieldValues} model={model} />
-    </main>
-  );
+  return <main className={styles.proposal} dir="rtl" style={cssVariables}>
+    <section className={`${styles.page} ${styles.coverPage}`}>
+      <div className={styles.coverTop}><Logo /><div className={styles.coverRule}/><div className={styles.coverTitle}>عرض سعر</div><div className={styles.coverCards}><div className={styles.coverCard}><span>مقدم إلى</span><strong>{m.companyName}</strong></div><div className={styles.coverCard}><span>التاريخ</span><strong>{m.issueDate}</strong></div></div></div>
+      <div className={styles.skyline}><div className={styles.sunGlow}/><div className={`${styles.building} ${styles.b1}`}/><div className={`${styles.building} ${styles.b2}`}/><div className={`${styles.building} ${styles.b3}`}/><div className={`${styles.building} ${styles.b4}`}/><div className={`${styles.building} ${styles.b5}`}/><div className={`${styles.building} ${styles.b6}`}/><div className={`${styles.building} ${styles.b7}`}/></div>
+      <div className={styles.coverFooter}><div><b>الجوال</b><span>{fieldValues.companyPhone}</span></div><div><b>الموقع الإلكتروني</b><span>{fieldValues.companyWebsite}</span></div><div><b>العنوان</b><span>{fieldValues.companyAddress}</span></div></div>
+    </section>
+
+    <section className={styles.page}><PageHeader label="الملخص التنفيذي"/><div className={styles.pageBody}><PageTitle>الملخص التنفيذي</PageTitle><p className={styles.leadParagraph}>يوضح هذا العرض كيف تساعد منصة أجور المنشآت في المملكة العربية السعودية على تطوير عمليات الموارد البشرية والمالية من خلال نظام سحابي متكامل يربط الموظفين والحضور والرواتب والإجازات والأداء والنفقات والتقارير في منصة واحدة.</p><div className={styles.goalsBox}>{goals.map(x=><div key={x}>{x}</div>)}</div><h2 className={styles.sectionHeading}>نبذة عن أجور</h2><p>وُلدت أجور من حاجة حقيقية لأنظمة موارد بشرية ورواتب أكثر بساطة ومرونة. تجمع المنصة الرواتب والحضور والإجازات والتوظيف والأداء والتعلم والنفقات والخدمة الذاتية والتكاملات الحكومية في تجربة واحدة.</p><div className={styles.valueBanner}>من أعمال تشغيلية متكررة إلى منظومة موارد بشرية أكثر كفاءة ووضوحًا</div></div><PageFooter fieldValues={fieldValues}/></section>
+
+    <section className={styles.page}><PageHeader label="منظومة التكاملات"/><div className={styles.pageBody}><PageTitle>منظومة أجور والتكاملات</PageTitle><p className={styles.leadParagraph}>منصة مركزية تربط الموارد البشرية والرواتب والمالية والمنصات الحكومية وأنظمة المحاسبة وقنوات التوظيف وأجهزة الحضور وخدمات الموظفين.</p><div className={styles.integrationMap}><div className={styles.integrationCenter}><Logo/><span>منصة موارد بشرية ورواتب وتشغيل يومي</span></div>{integrations.map(g=><article className={styles.integrationCard} key={g.no}><header><b>{g.no}</b><span>{g.title}</span></header><ul>{g.items.map(x=><li key={x}>{x}</li>)}</ul></article>)}</div><div className={styles.integrationNote}>منصة واحدة تقلل العمل اليدوي وتربط الموافقات والبيانات والأنظمة الخارجية</div></div><PageFooter fieldValues={fieldValues}/></section>
+
+    <section className={styles.page}><PageHeader label="عرض السعر التفصيلي"/><div className={styles.pageBody}><div className={styles.pricingTop}><div><PageTitle>عرض السعر التفصيلي</PageTitle><h2>{m.companyName}</h2></div><div className={styles.validityBox}><span>{fieldValues.proposalValidityDaysLabel}</span><strong>{m.expirationDate}</strong></div></div><div className={styles.pricingTableWrap}><table className={styles.pricingTable}><thead><tr><th>#</th><th>الخدمة / الباقة</th><th>الكمية</th><th>سعر الوحدة</th><th>الخصم</th><th>الإجمالي</th></tr></thead><tbody>{m.pricingRows.map((r,i)=><tr key={r.id}><td>{i+1}</td><td><strong>{r.name}</strong>{r.description&&<small>{r.description}</small>}</td><td>{r.quantity}</td><td>{formatMoney(r.unitPrice,m.currency)}</td><td>{formatMoney(r.discount,m.currency)}</td><td>{formatMoney(r.net,m.currency)}</td></tr>)}</tbody></table></div><div className={styles.priceBottom}><div className={styles.priceNotes}><h3>ملاحظات العرض</h3><p>الأسعار والخصومات والضرائب مأخوذة مباشرة من Line Items في HubSpot.</p><p>رقم العرض: {firstValue(m.quote.hs_quote_number,m.quote.hs_title,'—')}</p><p>العملة: {m.currency}</p></div><div className={styles.totals}><div><span>الإجمالي قبل الضريبة</span><strong>{formatMoney(m.subtotal,m.currency)}</strong></div><div><span>إجمالي الخصم</span><strong>{formatMoney(m.totalDiscount,m.currency)}</strong></div><div><span>الضريبة</span><strong>{formatMoney(m.totalTax,m.currency)}</strong></div><div className={styles.grandTotal}><span>الإجمالي النهائي</span><strong>{formatMoney(m.grandTotal,m.currency)}</strong></div></div></div></div><PageFooter fieldValues={fieldValues}/></section>
+
+    <section className={styles.page}><PageHeader label="خطوات التفعيل"/><div className={styles.pageBody}><PageTitle>رحلة تفعيل نظام أجور</PageTitle><p className={styles.subtitle}>خطوات منظمة لضمان جاهزية النظام قبل الإطلاق</p><div className={styles.activationFlow}>{activationSteps.map(([n,t,d])=><article key={n}><div className={styles.stepNumber}>{n}</div><h3>{t}</h3><p>{d}</p></article>)}</div><h2 className={styles.sectionHeading}>الجدول الزمني المقترح للتفعيل</h2><table className={styles.timelineTable}><thead><tr><th>المرحلة الزمنية</th><th>المحتوى والأنشطة</th></tr></thead><tbody><tr><td>الأسبوع الأول</td><td>اجتماع البداية، جمع المتطلبات، وتجهيز البيانات</td></tr><tr><td>الأسبوع الثاني</td><td>إعداد النظام، رفع البيانات، وضبط السياسات</td></tr><tr><td>الأسبوع الثالث</td><td>اختبار العمليات، مراجعة الإعدادات، والتكاملات المطلوبة</td></tr><tr><td>الأسبوع الرابع</td><td>التدريب، الإطلاق الفعلي، والمتابعة بعد الإطلاق</td></tr></tbody></table><div className={styles.infoBox}>قد يتم تقليل أو تمديد المدة حسب نطاق المشروع وجاهزية البيانات وعدد التكاملات المطلوبة.</div></div><PageFooter fieldValues={fieldValues}/></section>
+
+    <section className={styles.page}><PageHeader label="الشروط والأحكام"/><div className={styles.pageBody}><PageTitle>الشروط والأحكام</PageTitle><div className={styles.partiesGrid}><article><h2>الطرف الأول (أجور)</h2><dl><div><dt>الاسم</dt><dd>شركة الرائدة للموارد البشرية - أجور</dd></div><div><dt>العنوان</dt><dd>{fieldValues.companyAddress}</dd></div><div><dt>الموقع</dt><dd>{fieldValues.companyWebsite}</dd></div></dl></article><article><h2>الطرف الثاني (العميل)</h2><dl><div><dt>الاسم</dt><dd>{m.companyName}</dd></div><div><dt>السجل التجاري</dt><dd>{m.crNumber}</dd></div><div><dt>الرقم الضريبي</dt><dd>{m.vatNumber}</dd></div><div><dt>العنوان</dt><dd>{m.customerAddress}</dd></div></dl></article></div><div className={styles.commitmentsGrid}><article><h2>التزامات الطرف الأول</h2><ol>{firstPartyCommitments.map(x=><li key={x}>{x}</li>)}</ol></article><article><h2>التزامات الطرف الثاني</h2><ol>{secondPartyCommitments.map(x=><li key={x}>{x}</li>)}</ol></article></div></div><PageFooter fieldValues={fieldValues}/></section>
+
+    <section className={styles.page}><PageHeader label="الأحكام المالية والعامة"/><div className={styles.pageBody}><PageTitle>الأحكام المالية والعامة</PageTitle>{m.quoteTerms?<div className={styles.customTerms} dangerouslySetInnerHTML={{__html:m.quoteTerms}}/>:<><section className={styles.termsSection}><h2>الالتزامات المالية</h2><ol><li>يبدأ الاشتراك حسب الباقة والنطاق وعدد الحسابات المتفق عليه.</li><li>يجب سداد الدفعة المستحقة قبل بدء تنفيذ الاشتراك.</li><li>تُحتسب مدة الخدمة من تاريخ بدء الاشتراك أو إشعار التفعيل.</li><li>يحق للطرف الأول تعليق الخدمة بعد إشعار العميل عند تأخر السداد.</li></ol></section><section className={styles.termsSection}><h2>أحكام عامة وتسوية النزاعات</h2><ol><li>تخضع الاتفاقية للأنظمة المعمول بها في المملكة العربية السعودية.</li><li>يحاول الطرفان حل أي خلاف وديًا قبل الرجوع للجهات المختصة.</li><li>يتحمل الطرف المتسبب التكاليف الناتجة عن المخالفة أو سوء الاستخدام.</li></ol></section></>}<div className={styles.legalNotice}>يمثل هذا العرض مع الشروط والملحق ونطاق العمل وثيقة واحدة عند اعتماده.</div></div><PageFooter fieldValues={fieldValues}/></section>
+
+    <section className={styles.page}><PageHeader label="الاعتماد والتوقيع"/><div className={styles.pageBody}><PageTitle>اعتماد عرض السعر</PageTitle><p className={styles.leadParagraph}>بتوقيع الطرفين أدناه، يقر كل طرف بمراجعته للعرض ونطاق الخدمة والأسعار والشروط المرفقة.</p><div className={styles.signatureGrid}><article><h2>توقيع الطرف الأول</h2><dl><div><dt>الاسم</dt><dd>{sender}</dd></div><div><dt>البريد</dt><dd>{asText(m.quote.hs_sender_email)||'—'}</dd></div><div><dt>التاريخ</dt><dd>{m.issueDate}</dd></div><div className={styles.signatureLine}><dt>التوقيع</dt><dd/></div></dl></article><article><h2>توقيع الطرف الثاني</h2><dl><div><dt>الاسم</dt><dd>{buyer}</dd></div><div><dt>البريد</dt><dd>{m.signer?.email||asText(m.contact.email)||'—'}</dd></div><div><dt>التاريخ</dt><dd>{m.issueDate}</dd></div><div className={styles.signatureLine}><dt>التوقيع</dt><dd/></div></dl></article></div><div className={styles.thankYou}><Logo/><h2>شكرًا لاختياركم أجور</h2><p>فريقنا جاهز لبدء رحلة التفعيل وتحويل عمليات الموارد البشرية والرواتب إلى تجربة أكثر بساطة ووضوحًا.</p></div></div><PageFooter fieldValues={fieldValues}/></section>
+  </main>;
 }
 
-export const fields = (
-  <ModuleFields>
-    <TextField name="fallbackServiceName" label="Fallback service name" default="اشتراك منصة أجور للموارد البشرية والرواتب" />
-    <TextField name="proposalValidityDaysLabel" label="Validity date label" default="صالح حتى" />
-    <TextField name="companyPhone" label="Ojoor phone" default="+966 56 443 2194" />
-    <TextField name="companyWebsite" label="Ojoor website" default="www.ojoor.net" />
-    <TextField name="companyAddress" label="Ojoor address" default="مبنى 8758 حي العليا، مكتب 309، الرمز البريدي 12214" />
-    <FieldGroup name="styles" label="Styles" tab="STYLE">
-      <ColorField name="primaryColor" label="Primary color" default={{ color: '#1d347d', opacity: 100 }} />
-      <ColorField name="secondaryColor" label="Secondary color" default={{ color: '#7856a7', opacity: 100 }} />
-      <ColorField name="accentColor" label="Accent color" default={{ color: '#e8b86d', opacity: 100 }} />
-    </FieldGroup>
-  </ModuleFields>
-);
-
-export const meta = {
-  label: 'Ojoor Arabic Proposal',
-  content_types: ['QUOTE', 'QUOTE_BLUEPRINT'],
-};
-
+export const fields = <ModuleFields><TextField name="fallbackServiceName" label="Fallback service name" default="اشتراك منصة أجور للموارد البشرية والرواتب"/><TextField name="proposalValidityDaysLabel" label="Validity date label" default="صالح حتى"/><TextField name="companyPhone" label="Ojoor phone" default="+966 56 443 2194"/><TextField name="companyWebsite" label="Ojoor website" default="www.ojoor.net"/><TextField name="companyAddress" label="Ojoor address" default="مبنى 8758 حي العليا، مكتب 309، الرمز البريدي 12214"/><FieldGroup name="styles" label="Styles" tab="STYLE"><ColorField name="primaryColor" label="Primary color" default={{color:'#1d347d',opacity:100}}/><ColorField name="secondaryColor" label="Secondary color" default={{color:'#7856a7',opacity:100}}/><ColorField name="accentColor" label="Accent color" default={{color:'#e8b86d',opacity:100}}/></FieldGroup></ModuleFields>;
+export const meta = { label: 'Ojoor Arabic Proposal', content_types: ['QUOTE','QUOTE_BLUEPRINT'] };
 export const hublDataTemplate = `
-  {% if quoteTemplateContext.deal.hs_object_id %}
-    {% set dealDetails = crm_object(
-      "deal",
-      quoteTemplateContext.deal.hs_object_id,
-      "dealname,amount,deal_currency_code,billing_address,cr_number,vat_number,legal_name_arabic,legal_name_english"
-    ) %}
-  {% endif %}
-
-  {% if quoteTemplateContext.buyerCompany.hs_object_id %}
-    {% set companyDetails = crm_object(
-      "company",
-      quoteTemplateContext.buyerCompany.hs_object_id,
-      "name,cr_number,vat_number,billing_address,address,city,country,zip,numberofemployees,phone,website"
-    ) %}
-  {% endif %}
-
-  {% set hublData = {
-    "quote": quoteTemplateContext.quote,
-    "deal": quoteTemplateContext.deal,
-    "lineItems": quoteTemplateContext.lineItems,
-    "buyerContacts": quoteTemplateContext.buyerContacts,
-    "buyerCompany": quoteTemplateContext.buyerCompany,
-    "signers": quoteTemplateContext.signers,
-    "dealDetails": dealDetails if dealDetails else {},
-    "companyDetails": companyDetails if companyDetails else {},
-    "isQuoteBlueprint": isQuoteBlueprint
-  } %}
-`;
+{% if quoteTemplateContext.deal.hs_object_id %}{% set dealDetails = crm_object("deal",quoteTemplateContext.deal.hs_object_id,"dealname,amount,deal_currency_code,billing_address,cr_number,vat_number,legal_name_arabic,legal_name_english") %}{% endif %}
+{% if quoteTemplateContext.buyerCompany.hs_object_id %}{% set companyDetails = crm_object("company",quoteTemplateContext.buyerCompany.hs_object_id,"name,cr_number,vat_number,billing_address,address,city,country,zip,numberofemployees,phone,website") %}{% endif %}
+{% set hublData = {"quote":quoteTemplateContext.quote,"deal":quoteTemplateContext.deal,"lineItems":quoteTemplateContext.lineItems,"buyerContacts":quoteTemplateContext.buyerContacts,"buyerCompany":quoteTemplateContext.buyerCompany,"signers":quoteTemplateContext.signers,"dealDetails":dealDetails if dealDetails else {},"companyDetails":companyDetails if companyDetails else {},"isQuoteBlueprint":isQuoteBlueprint} %}`;
