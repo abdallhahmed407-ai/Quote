@@ -63,6 +63,16 @@ async function readObject(env: Env, objectType: string, objectId: string, proper
   return request<JsonObject>(env, `/crm/v3/objects/${objectType}/${objectId}?${query}`);
 }
 
+async function readOwnerSafely(env: Env, ownerId?: string): Promise<JsonObject> {
+  if (!ownerId) return {};
+  try {
+    return await request<JsonObject>(env, `/crm/v3/owners/${ownerId}?idProperty=id`);
+  } catch (error) {
+    console.warn('Owner lookup skipped; proposal will use fallback sender details.', error);
+    return {};
+  }
+}
+
 export async function buildSnapshot(env: Env, dealId: string, version: number): Promise<ProposalSnapshot> {
   const query = new URLSearchParams({ properties: DEAL_PROPERTIES.join(','), associations: 'companies,contacts,line_items' });
   const dealRecord = await request<JsonObject>(env, `/crm/v3/objects/deals/${dealId}?${query}`);
@@ -74,9 +84,7 @@ export async function buildSnapshot(env: Env, dealId: string, version: number): 
     companyId ? readObject(env, 'companies', companyId, COMPANY_PROPERTIES) : Promise.resolve({ properties: {} }),
     contactId ? readObject(env, 'contacts', contactId, CONTACT_PROPERTIES) : Promise.resolve({ properties: {} }),
     Promise.all(lineItemIds.map((id) => readObject(env, 'line_items', id, LINE_ITEM_PROPERTIES))),
-    dealRecord.properties?.hubspot_owner_id
-      ? request<JsonObject>(env, `/crm/v3/owners/${dealRecord.properties.hubspot_owner_id}?idProperty=id`)
-      : Promise.resolve({}),
+    readOwnerSafely(env, dealRecord.properties?.hubspot_owner_id),
   ]);
 
   const deal = dealRecord.properties || {};
