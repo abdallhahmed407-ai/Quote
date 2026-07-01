@@ -11,8 +11,5 @@
   },
   "triggers": {
     "crons": ["* * * * *"]
-  },
-  "vars": {
-    "PUBLIC_BASE_URL": ""
   }
 }
