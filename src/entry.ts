@@ -1,6 +1,8 @@
 import worker from './index';
 import type { Env } from './types';
 
+const APPROVED_IMAGE_ORIGIN = 'https://skyagent-artifacts.skywork.ai';
+
 const PRINT_FIXES = `
 <style id="ojoor-print-pagination-fixes">
   @page { size: A4 portrait; margin: 0; }
@@ -91,6 +93,10 @@ const PRINT_FIXES = `
     margin-bottom: 0 !important;
   }
 
+  .cover-photo {
+    background-position: center center !important;
+  }
+
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -105,6 +111,17 @@ function fixHtml(html: string): string {
     .replace(/استكمال الشروط واألحكام/g, 'الشروط والأحكام');
 
   return fixed;
+}
+
+function proposalCsp(): string {
+  return [
+    "default-src 'none'",
+    "style-src 'unsafe-inline' https://fonts.googleapis.com",
+    'font-src https://fonts.gstatic.com',
+    `img-src data: ${APPROVED_IMAGE_ORIGIN}`,
+    "base-uri 'none'",
+    "frame-ancestors 'none'",
+  ].join('; ');
 }
 
 async function renderPdf(request: Request, env: Env): Promise<Response> {
@@ -150,6 +167,7 @@ export default {
 
     const headers = new Headers(response.headers);
     headers.set('cache-control', 'private, max-age=60');
+    headers.set('content-security-policy', proposalCsp());
     return new Response(fixHtml(await response.text()), {
       status: response.status,
       headers,
