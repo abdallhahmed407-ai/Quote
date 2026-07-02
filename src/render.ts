@@ -1,7 +1,7 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'arabic-meta-signatures-v2';
+const RELEASE_MARKER = 'arabic-meta-signatures-v3';
 
 function replaceAll(source: string, marker: string, value: string): string {
   return source.split(marker).join(value);
@@ -34,7 +34,7 @@ function renumberPages(html: string): string {
   });
 }
 
-function injectDownloadExperience(html: string): string {
+function injectDownloadExperience(html: string, downloadPath: string): string {
   const style = `<meta name="ojoor-release" content="${RELEASE_MARKER}">
   <style>
     .pricing-bottom-totals-only {
@@ -128,7 +128,7 @@ function injectDownloadExperience(html: string): string {
   </style>`;
 
   const controls = `<div class="proposal-print-actions">
-    <a class="proposal-print-button" href="?download=1">تحميل PDF</a>
+    <a class="proposal-print-button" href="${escapeHtml(downloadPath)}">تحميل PDF</a>
   </div>`;
 
   const withStyle = html.includes('</head>')
@@ -140,7 +140,11 @@ function injectDownloadExperience(html: string): string {
     : `${withStyle}${controls}`;
 }
 
-export function renderProposal(snapshot: ProposalSnapshot, template: string): string {
+export function renderProposal(
+  snapshot: ProposalSnapshot,
+  template: string,
+  downloadPath = '/preview/pdf?download=1',
+): string {
   const deal = snapshot.deal || {};
   const company = snapshot.company || {};
   const contact = snapshot.contact || {};
@@ -199,5 +203,5 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string): st
 
   for (const [cid, value] of Object.entries(cidValues)) html = replaceCidContent(html, cid, value);
   for (const [marker, value] of Object.entries(values)) html = replaceAll(html, marker, value);
-  return injectDownloadExperience(renumberPages(html));
+  return injectDownloadExperience(renumberPages(html), downloadPath);
 }
