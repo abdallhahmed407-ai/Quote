@@ -12,12 +12,13 @@ function replaceCidContent(source: string, cid: string, value: string): string {
     `${opening}${value}${closing}`);
 }
 
-function formatDate(value: string): string {
-  const date = new Date(value);
+function formatArabicDate(value: unknown): string {
+  if (!value) return '';
+  const date = new Date(String(value));
   if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: '2-digit',
+  return new Intl.DateTimeFormat('ar-EG-u-ca-gregory-nu-arab', {
+    day: 'numeric',
+    month: 'long',
     year: 'numeric',
   }).format(date);
 }
@@ -31,7 +32,7 @@ function renumberPages(html: string): string {
   });
 }
 
-function injectDownloadExperience(html: string, filename: string): string {
+function injectDownloadExperience(html: string): string {
   const style = `<style>
     .pricing-bottom-totals-only {
       display: flex !important;
@@ -86,6 +87,10 @@ function injectDownloadExperience(html: string, filename: string): string {
       .pricing-bottom-totals-only .pricing-totals {
         width: 100% !important;
       }
+
+      .pricing-reference-grid {
+        flex-direction: column !important;
+      }
     }
 
     @media print {
@@ -130,18 +135,12 @@ function injectDownloadExperience(html: string, filename: string): string {
 
       const currentPath = window.location.pathname.replace(/\/$/, '');
       const pdfPath = currentPath === '/preview' ? '/preview/pdf' : currentPath + '/pdf';
-      const link = document.createElement('a');
-      link.href = pdfPath + '?download=' + Date.now();
-      link.download = '${filename}';
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      window.location.assign(pdfPath + '?download=1&t=' + Date.now());
 
       window.setTimeout(() => {
         button.disabled = false;
         button.textContent = originalText;
-      }, 2500);
+      }, 5000);
     }
   </script>`;
 
@@ -160,7 +159,7 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string): st
   const contact = snapshot.contact || {};
   const owner = snapshot.owner || {};
 
-  const customerName = company.name || deal.legal_name_arabic || deal.legal_name_english || deal.dealname || '';
+  const legalNameArabic = deal.legal_name_arabic || company.name || deal.legal_name_english || deal.dealname || '';
   const customerAddress = company.billing_address || deal.billing_address || [
     company.address,
     company.address2,
@@ -171,15 +170,16 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string): st
   ].filter(Boolean).join('، ');
 
   const context: ProposalContext = {
-    customerName,
+    customerName: legalNameArabic,
     customerCr: company.cr_number || deal.cr_number || '',
     customerVat: company.vat_number || deal.vat_number || '',
     customerAddress,
     contactName: [contact.firstname, contact.lastname].filter(Boolean).join(' '),
     ownerName: [owner.firstName, owner.lastName].filter(Boolean).join(' '),
-    createdDate: formatDate(snapshot.createdAt),
+    createdDate: formatArabicDate(snapshot.createdAt),
+    expirationDate: formatArabicDate(deal.proposal_expiration_date),
     currency: snapshot.totals?.currency || 'SAR',
-    quoteNumber: `OJR-${snapshot.dealId}-V${snapshot.version}`,
+    quoteNumber: `OGR-${snapshot.dealId}-V${snapshot.version}`,
   };
 
   const pricing = renderPricing(snapshot, context);
@@ -191,6 +191,7 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string): st
     '{{CONTACT_NAME}}': escapeHtml(context.contactName),
     '{{OWNER_NAME}}': escapeHtml(context.ownerName),
     '{{CREATED_DATE}}': escapeHtml(context.createdDate),
+    '{{EXPIRATION_DATE}}': escapeHtml(context.expirationDate),
     '{{PRICING_BODY}}': pricing.firstBody,
     '{{EXTRA_PRICING_PAGES}}': pricing.extraPages,
   };
@@ -205,13 +206,11 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string): st
     'VzkAyN': values['{{CUSTOMER_ADDRESS}}'],
     'kODtr_': '',
     'j42ryV': '',
-    'R-IAxZ': '',
+    'R-IAxZ': values['{{CUSTOMER_NAME}}'],
     'nl1wjI': '',
   };
 
   for (const [cid, value] of Object.entries(cidValues)) html = replaceCidContent(html, cid, value);
   for (const [marker, value] of Object.entries(values)) html = replaceAll(html, marker, value);
-
-  const filename = `Ojoor-Proposal-${context.quoteNumber}.pdf`;
-  return injectDownloadExperience(renumberPages(html), filename);
+  return injectDownloadExperience(renumberPages(html));
 }
