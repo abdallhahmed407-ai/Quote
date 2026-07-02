@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - deployment-status.json
   workflow_dispatch:
 
 concurrency:
@@ -15,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout latest main
         uses: actions/checkout@v4
@@ -53,6 +55,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Verify Riyadh-local date and print button on Cloudflare
+        id: verify
         run: |
           verified=0
           proposal_url='https://quote.abdallhahmed407.workers.dev/p/eyJuIjoiNTAxOTEyMDYzMTkxIiwiZCI6IjUwODg3ODQyMTIxMyIsInYiOjI4fQ.OldhRKGe7j9dKMfbQkfMcVRTCtNzCYn3JpH8s9PA3Ss'
@@ -75,4 +78,23 @@ jobs:
           done
 
           test "$verified" = "1"
+          echo "expected_date=$expected_date" >> "$GITHUB_OUTPUT"
           echo "Verified Riyadh-local date: $expected_date"
+
+      - name: Record verified production deployment
+        run: |
+          cat > deployment-status.json <<EOF
+          {
+            "release": "html-browser-print-v6-riyadh-date",
+            "source_commit": "${GITHUB_SHA}",
+            "cloudflare_verified": true,
+            "proposal_time_zone": "Asia/Riyadh",
+            "verified_arabic_date": "${{ steps.verify.outputs.expected_date }}",
+            "verified_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deployment-status.json
+          git commit -m "chore: record verified Cloudflare deployment [skip ci]"
+          git push origin HEAD:main
