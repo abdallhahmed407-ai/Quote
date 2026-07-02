@@ -31,7 +31,7 @@ function renumberPages(html: string): string {
   });
 }
 
-function injectPrintExperience(html: string): string {
+function injectDownloadExperience(html: string, filename: string): string {
   const style = `<style>
     .pricing-bottom-totals-only {
       display: flex !important;
@@ -120,35 +120,28 @@ function injectPrintExperience(html: string): string {
   </style>`;
 
   const controls = `<div class="proposal-print-actions">
-    <button class="proposal-print-button" type="button" onclick="printOjoorProposal(this)">طباعة</button>
+    <button class="proposal-print-button" type="button" onclick="downloadOjoorProposal(this)">تحميل PDF</button>
   </div>
   <script>
-    async function printOjoorProposal(button) {
+    function downloadOjoorProposal(button) {
       button.disabled = true;
       const originalText = button.textContent;
-      button.textContent = 'جاري تجهيز الطباعة...';
+      button.textContent = 'جاري تجهيز الملف...';
 
-      try {
-        if (document.fonts && document.fonts.ready) {
-          await document.fonts.ready;
-        }
+      const currentPath = window.location.pathname.replace(/\/$/, '');
+      const pdfPath = currentPath === '/preview' ? '/preview/pdf' : currentPath + '/pdf';
+      const link = document.createElement('a');
+      link.href = pdfPath + '?download=' + Date.now();
+      link.download = '${filename}';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
 
-        const pendingImages = Array.from(document.images)
-          .filter((image) => !image.complete)
-          .map((image) => new Promise((resolve) => {
-            image.addEventListener('load', resolve, { once: true });
-            image.addEventListener('error', resolve, { once: true });
-          }));
-
-        await Promise.all(pendingImages);
-        await new Promise((resolve) => setTimeout(resolve, 250));
-        window.print();
-      } finally {
-        window.setTimeout(() => {
-          button.disabled = false;
-          button.textContent = originalText;
-        }, 600);
-      }
+      window.setTimeout(() => {
+        button.disabled = false;
+        button.textContent = originalText;
+      }, 2500);
     }
   </script>`;
 
@@ -218,5 +211,7 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string): st
 
   for (const [cid, value] of Object.entries(cidValues)) html = replaceCidContent(html, cid, value);
   for (const [marker, value] of Object.entries(values)) html = replaceAll(html, marker, value);
-  return injectPrintExperience(renumberPages(html));
+
+  const filename = `Ojoor-Proposal-${context.quoteNumber}.pdf`;
+  return injectDownloadExperience(renumberPages(html), filename);
 }
