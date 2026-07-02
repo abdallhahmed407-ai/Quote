@@ -34,4 +34,4 @@ export default [
   'YbkKSYnx9iaEkMgLuUvpW4MP9Q7hqtPDC6YUTdvWgvw=',
   'vamUVoWT8/pd6PHEY+kw/47YDCcJsPKpF1AL5BNbYCc=',
   'SdHa5BOb9TXoe0Tb6gd20xDXSlqmayfdIykOpaU=',
-].join('');
+] as const;
