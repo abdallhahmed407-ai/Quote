@@ -12,6 +12,7 @@ const DEAL_PROPERTIES = [
   'vat_number',
   'legal_name_arabic',
   'legal_name_english',
+  'proposal_expiration_date',
   'generate_proposal',
   'proposal_status',
   'proposal_url',
