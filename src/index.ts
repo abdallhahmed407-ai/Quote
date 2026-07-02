@@ -211,7 +211,10 @@ function htmlHeaders(): HeadersInit {
   };
 }
 
-async function renderSnapshot(snapshot: ProposalSnapshot): Promise<{ snapshot: ProposalSnapshot; html: string }> {
+async function renderSnapshot(
+  snapshot: ProposalSnapshot,
+  downloadPath = '/preview/pdf?download=1',
+): Promise<{ snapshot: ProposalSnapshot; html: string }> {
   let proposalTemplate: string;
   try {
     proposalTemplate = await getProposalTemplate();
@@ -222,7 +225,7 @@ async function renderSnapshot(snapshot: ProposalSnapshot): Promise<{ snapshot: P
   try {
     return {
       snapshot,
-      html: renderProposal(snapshot, proposalTemplate),
+      html: renderProposal(snapshot, proposalTemplate, downloadPath),
     };
   } catch (error) {
     throw new Error(`PROPOSAL_RENDER_FAILED: ${safeErrorMessage(error)}`);
@@ -237,7 +240,7 @@ async function renderFromToken(env: Env, token: string): Promise<{ snapshot: Pro
     throw new Error(`SNAPSHOT_LOAD_FAILED: ${safeErrorMessage(error)}`);
   }
   if (!snapshot) return null;
-  return renderSnapshot(snapshot);
+  return renderSnapshot(snapshot, `/p/${token}/pdf?download=1`);
 }
 
 async function renderPdf(
@@ -305,7 +308,7 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
       return Response.redirect(`${url.origin}/preview/pdf?download=1`, 302);
     }
 
-    const rendered = await renderSnapshot(createPreviewSnapshot());
+    const rendered = await renderSnapshot(createPreviewSnapshot(), '/preview/pdf?download=1');
     if (url.pathname === '/preview/pdf') {
       return renderPdf(env, rendered, 'Ojoor-Proposal-PREVIEW-V1.pdf', shouldDownload);
     }
