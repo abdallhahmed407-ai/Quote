@@ -1,7 +1,7 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'arabic-meta-signatures-v3';
+const RELEASE_MARKER = 'html-browser-print-v4';
 
 function replaceAll(source: string, marker: string, value: string): string {
   return source.split(marker).join(value);
@@ -34,7 +34,7 @@ function renumberPages(html: string): string {
   });
 }
 
-function injectDownloadExperience(html: string, downloadPath: string): string {
+function injectPrintExperience(html: string): string {
   const style = `<meta name="ojoor-release" content="${RELEASE_MARKER}">
   <style>
     .pricing-bottom-totals-only {
@@ -74,7 +74,6 @@ function injectDownloadExperience(html: string, downloadPath: string): string {
       font-size: 15px;
       font-weight: 800;
       cursor: pointer;
-      text-decoration: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -84,6 +83,11 @@ function injectDownloadExperience(html: string, downloadPath: string): string {
     .proposal-print-button:hover {
       transform: translateY(-1px);
       box-shadow: 0 12px 28px rgba(26, 43, 110, 0.28);
+    }
+
+    .proposal-print-button:disabled {
+      cursor: wait;
+      opacity: 0.65;
     }
 
     @media (max-width: 760px) {
@@ -97,9 +101,15 @@ function injectDownloadExperience(html: string, downloadPath: string): string {
     }
 
     @media print {
+      @page {
+        size: A4;
+        margin: 0;
+      }
+
       *, *::before, *::after {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        color-adjust: exact !important;
       }
 
       html,
@@ -128,16 +138,34 @@ function injectDownloadExperience(html: string, downloadPath: string): string {
   </style>`;
 
   const controls = `<div class="proposal-print-actions">
-    <a class="proposal-print-button" href="${escapeHtml(downloadPath)}">تحميل PDF</a>
+    <button class="proposal-print-button" type="button" onclick="printOjoorProposal(this)">طباعة</button>
   </div>
   <script>
-    (() => {
-      const removeDownloadControl = () => {
-        document.querySelector('.proposal-print-actions')?.remove();
-      };
-      if (navigator.webdriver) removeDownloadControl();
-      window.addEventListener('beforeprint', removeDownloadControl);
-    })();
+    async function printOjoorProposal(button) {
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'جاري تجهيز الطباعة...';
+
+      try {
+        if (document.fonts && document.fonts.ready) {
+          await document.fonts.ready;
+        }
+
+        const pendingImages = Array.from(document.images)
+          .filter((image) => !image.complete)
+          .map((image) => new Promise((resolve) => {
+            image.addEventListener('load', resolve, { once: true });
+            image.addEventListener('error', resolve, { once: true });
+          }));
+
+        await Promise.all(pendingImages);
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        window.print();
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
   </script>`;
 
   const withStyle = html.includes('</head>')
@@ -152,7 +180,7 @@ function injectDownloadExperience(html: string, downloadPath: string): string {
 export function renderProposal(
   snapshot: ProposalSnapshot,
   template: string,
-  downloadPath = '/preview/pdf?download=1',
+  _downloadPath = '',
 ): string {
   const deal = snapshot.deal || {};
   const company = snapshot.company || {};
@@ -212,5 +240,5 @@ export function renderProposal(
 
   for (const [cid, value] of Object.entries(cidValues)) html = replaceCidContent(html, cid, value);
   for (const [marker, value] of Object.entries(values)) html = replaceAll(html, marker, value);
-  return injectDownloadExperience(renumberPages(html), downloadPath);
+  return injectPrintExperience(renumberPages(html));
 }
