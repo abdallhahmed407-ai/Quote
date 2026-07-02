@@ -39,17 +39,17 @@ jobs:
       - name: Verify deployed release
         run: |
           for attempt in 1 2 3 4 5 6; do
-            if curl -fsS "https://quote.abdallhahmed407.workers.dev/preview?verify=${GITHUB_SHA}" | grep -q 'ojoor-release" content="arabic-meta-signatures-v2'; then
-              echo "Verified deployed HTML release arabic-meta-signatures-v2"
+            if curl -fsS "https://quote.abdallhahmed407.workers.dev/preview?verify=${GITHUB_SHA}" | grep -q 'ojoor-release" content="arabic-meta-signatures-v3'; then
+              echo "Verified deployed HTML release"
               break
             fi
             sleep 10
           done
 
           curl --fail --silent --show-error --location \
-            "https://quote.abdallhahmed407.workers.dev/preview?download=1&verify=${GITHUB_SHA}" \
+            "https://quote.abdallhahmed407.workers.dev/preview/pdf?download=1&verify=${GITHUB_SHA}" \
             --output /tmp/ojoor-preview.pdf
 
           test "$(head -c 5 /tmp/ojoor-preview.pdf)" = "%PDF-"
           test "$(wc -c < /tmp/ojoor-preview.pdf)" -gt 10000
-          echo "Verified working PDF download"
+          echo "Verified direct PDF button endpoint"
