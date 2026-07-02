@@ -13,9 +13,24 @@ import restBase64 from './template-rest';
 
 let cachedTemplate: Promise<string> | undefined;
 
-function base64ToBytes(value: string): Uint8Array {
-  const binary = atob(value);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+function decodeBase64Parts(value: string | readonly string[]): Uint8Array {
+  const parts = typeof value === 'string' ? [value] : value;
+  const decodedParts = parts.map((part) => {
+    const normalized = part.replace(/\s+/g, '');
+    const binary = atob(normalized);
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  });
+
+  const totalLength = decodedParts.reduce((total, part) => total + part.byteLength, 0);
+  const decoded = new Uint8Array(totalLength);
+  let offset = 0;
+
+  for (const part of decodedParts) {
+    decoded.set(part, offset);
+    offset += part.byteLength;
+  }
+
+  return decoded;
 }
 
 function restoreTemplateArchive(): Uint8Array {
@@ -32,7 +47,7 @@ function restoreTemplateArchive(): Uint8Array {
     part10,
     part11,
   ];
-  const restoredRest = base64ToBytes(restBase64);
+  const restoredRest = decodeBase64Parts(restBase64);
   const totalLength = binaryParts.reduce((total, part) => total + part.byteLength, 0) + restoredRest.byteLength;
   const restored = new Uint8Array(totalLength);
   let offset = 0;
