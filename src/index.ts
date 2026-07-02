@@ -239,7 +239,12 @@ async function renderFromToken(env: Env, token: string): Promise<{ snapshot: Pro
   return renderSnapshot(snapshot);
 }
 
-async function renderPdf(env: Env, rendered: { snapshot: ProposalSnapshot; html: string }, filename: string): Promise<Response> {
+async function renderPdf(
+  env: Env,
+  rendered: { snapshot: ProposalSnapshot; html: string },
+  filename: string,
+  forceDownload = false,
+): Promise<Response> {
   const response = await env.BROWSER.quickAction('pdf', {
     html: rendered.html,
     emulateMediaType: 'screen',
@@ -254,7 +259,7 @@ async function renderPdf(env: Env, rendered: { snapshot: ProposalSnapshot; html:
   });
   const headers = new Headers(response.headers);
   headers.set('content-type', 'application/pdf');
-  headers.set('content-disposition', `inline; filename="${filename}"`);
+  headers.set('content-disposition', `${forceDownload ? 'attachment' : 'inline'}; filename="${filename}"`);
   headers.set('cache-control', 'private, no-store');
   return new Response(response.body, { status: response.status, headers });
 }
@@ -281,7 +286,7 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
   if (url.pathname === '/preview' || url.pathname === '/preview/pdf') {
     const rendered = await renderSnapshot(createPreviewSnapshot());
     if (url.pathname === '/preview/pdf') {
-      return renderPdf(env, rendered, 'ojoor-proposal-preview.pdf');
+      return renderPdf(env, rendered, 'Ojoor-Proposal-PREVIEW-V1.pdf', url.searchParams.has('download'));
     }
     return new Response(rendered.html, { headers: htmlHeaders() });
   }
@@ -301,7 +306,12 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
   if (!rendered) return json({ error: 'Invalid proposal link' }, 404);
 
   if (match[2] === '/pdf') {
-    return renderPdf(env, rendered, `ojoor-proposal-v${rendered.snapshot.version}.pdf`);
+    return renderPdf(
+      env,
+      rendered,
+      `Ojoor-Proposal-OJR-${rendered.snapshot.dealId}-V${rendered.snapshot.version}.pdf`,
+      url.searchParams.has('download'),
+    );
   }
 
   return new Response(rendered.html, { headers: htmlHeaders() });
