@@ -8,6 +8,7 @@ export interface ProposalContext {
   contactName: string;
   ownerName: string;
   createdDate: string;
+  expirationDate: string;
   currency: string;
   quoteNumber: string;
 }
@@ -110,11 +111,8 @@ function rows(items: JsonObject[], pageOffset: number, currency: string): string
 
   return items.map((item, index) => {
     const values = itemNumbers(item);
-    const fallback = item.description === 'Deal amount fallback';
-    const name = fallback ? 'اشتراك منصة أجور' : item.name || 'خدمة أجور';
-    const description = fallback
-      ? 'اشتراك منصة أجور للموارد البشرية والرواتب'
-      : item.description || '';
+    const name = item.name || 'خدمة أجور';
+    const description = item.description || '';
     const tags = [
       item.hs_sku ? `SKU: ${item.hs_sku}` : '',
       billingLabel(item.recurringbillingfrequency),
@@ -154,14 +152,20 @@ function table(items: JsonObject[], pageOffset: number, currency: string): strin
 function heading(context: ProposalContext): string {
   return `<div class="pricing-title-row">
     <h1 class="sec-title">عرض السعر التفصيلي</h1>
-    <div class="pricing-quote-number">
-      <small>رقم العرض</small>
-      <strong>${escapeHtml(context.quoteNumber)}</strong>
+    <div class="pricing-reference-grid" style="display:flex;gap:12px;align-items:stretch;direction:rtl">
+      <div class="pricing-quote-number" style="min-width:190px">
+        <small>رقم العرض</small>
+        <strong>${escapeHtml(context.quoteNumber)}</strong>
+      </div>
+      <div class="pricing-quote-number" style="min-width:190px">
+        <small>تاريخ انتهاء العرض</small>
+        <strong>${escapeHtml(context.expirationDate || '-')}</strong>
+      </div>
     </div>
   </div>
   <div class="pricing-meta">
-    <div><b>العميل</b><span>${escapeHtml(context.customerName || '-')}</span></div>
-    <div><b>التاريخ</b><span class="pricing-ltr">${escapeHtml(context.createdDate)}</span></div>
+    <div><b>مقدم إلى</b><span>${escapeHtml(context.customerName || '-')}</span></div>
+    <div><b>التاريخ</b><span>${escapeHtml(context.createdDate)}</span></div>
     <div><b>العملة</b><span class="pricing-ltr">${escapeHtml(context.currency)}</span></div>
   </div>`;
 }
