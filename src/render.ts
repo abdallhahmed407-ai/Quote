@@ -1,7 +1,8 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'html-browser-print-v5';
+const RELEASE_MARKER = 'html-browser-print-v6-riyadh-date';
+const PROPOSAL_TIME_ZONE = 'Asia/Riyadh';
 
 function replaceAll(source: string, marker: string, value: string): string {
   return source.split(marker).join(value);
@@ -22,6 +23,7 @@ function formatArabicDate(value: unknown): string {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: PROPOSAL_TIME_ZONE,
   }).format(date);
 }
 
