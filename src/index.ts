@@ -242,6 +242,8 @@ async function renderFromToken(env: Env, token: string): Promise<{ snapshot: Pro
 async function renderPdf(env: Env, rendered: { snapshot: ProposalSnapshot; html: string }, filename: string): Promise<Response> {
   const response = await env.BROWSER.quickAction('pdf', {
     html: rendered.html,
+    emulateMediaType: 'screen',
+    waitForTimeout: 750,
     pdfOptions: {
       format: 'a4',
       landscape: false,
@@ -253,7 +255,7 @@ async function renderPdf(env: Env, rendered: { snapshot: ProposalSnapshot; html:
   const headers = new Headers(response.headers);
   headers.set('content-type', 'application/pdf');
   headers.set('content-disposition', `inline; filename="${filename}"`);
-  headers.set('cache-control', 'private, max-age=60');
+  headers.set('cache-control', 'private, no-store');
   return new Response(response.body, { status: response.status, headers });
 }
 
