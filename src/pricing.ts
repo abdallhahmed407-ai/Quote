@@ -169,14 +169,8 @@ function heading(context: ProposalContext): string {
 function totals(snapshot: ProposalSnapshot, context: ProposalContext): string {
   const normalized = normalizeTotals(snapshot);
   const gross = normalized.subtotal + normalized.discount;
-  return `<div class="pricing-bottom">
-    <div class="pricing-note">
-      <h3>ملاحظات العرض</h3>
-      <p><strong>ممثل أجور:</strong> ${escapeHtml(context.ownerName || '-')}</p>
-      <p><strong>ممثل العميل:</strong> ${escapeHtml(context.contactName || '-')}</p>
-      <p>الأسعار والتفاصيل مأخوذة من بنود السعر المحفوظة على الصفقة عند إنشاء هذه النسخة.</p>
-    </div>
-    <div class="pricing-totals">
+  return `<div class="pricing-bottom pricing-bottom-totals-only">
+    <div class="pricing-totals" style="width:50%;margin-right:auto">
       <div class="pricing-total-row"><span>الإجمالي قبل الخصم</span><span>${escapeHtml(money(gross, context.currency))}</span></div>
       <div class="pricing-total-row"><span>إجمالي الخصم</span><span>${escapeHtml(money(normalized.discount, context.currency))}</span></div>
       <div class="pricing-total-row"><span>الإجمالي قبل الضريبة</span><span>${escapeHtml(money(normalized.subtotal, context.currency))}</span></div>
