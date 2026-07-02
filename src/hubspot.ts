@@ -136,28 +136,14 @@ function isBlank(value: unknown): boolean {
 
 function validateRequiredFields(
   deal: JsonObject,
-  company: JsonObject,
   owner: JsonObject,
   lineItems: JsonObject[],
 ): void {
-  const customerCr = company.cr_number || deal.cr_number;
-  const customerVat = company.vat_number || deal.vat_number;
-  const customerAddress = company.billing_address || deal.billing_address || [
-    company.address,
-    company.address2,
-    company.city,
-    company.state,
-    company.country,
-    company.zip,
-  ].filter(Boolean).join('، ');
   const ownerName = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim();
 
   if (isBlank(deal.legal_name_arabic)) throw new Error('Please fill Legal Name (Arabic).');
   if (isBlank(deal.proposal_expiration_date)) throw new Error('Please fill Proposal Expiration Date.');
   if (isBlank(deal.hubspot_owner_id) || isBlank(ownerName)) throw new Error('Please assign Deal Owner.');
-  if (isBlank(customerCr)) throw new Error('Please fill CR Number.');
-  if (isBlank(customerVat)) throw new Error('Please fill VAT Number.');
-  if (isBlank(customerAddress)) throw new Error('Please fill Billing Address.');
   if (lineItems.length === 0) throw new Error('Please add Line Item.');
 
   lineItems.forEach((item, index) => {
@@ -190,7 +176,7 @@ export async function buildSnapshot(env: Env, dealId: string, version: number): 
   const contact = contactRecord.properties || {};
   const lineItems = lineItemRecords.map((record) => ({ id: record.id, ...(record.properties || {}) }));
 
-  validateRequiredFields(deal, company, ownerRecord || {}, lineItems);
+  validateRequiredFields(deal, ownerRecord || {}, lineItems);
 
   const currency = lineItems[0]?.hs_line_item_currency_code || deal.deal_currency_code || 'SAR';
 
