@@ -5,6 +5,13 @@ function replaceAll(source: string, marker: string, value: string): string {
   return source.split(marker).join(value);
 }
 
+function replaceCidContent(source: string, cid: string, value: string): string {
+  const escapedCid = cid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`(<(?:span|div)[^>]*data-cid=\"${escapedCid}\"[^>]*>)(.*?)(</(?:span|div)>)`, 's');
+  return source.replace(pattern, (_match, opening: string, _content: string, closing: string) =>
+    `${opening}${value}${closing}`);
+}
+
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
@@ -66,6 +73,20 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string): st
   };
 
   let html = template;
+  const cidValues: Record<string, string> = {
+    '2WqGGa': values['{{CUSTOMER_NAME}}'],
+    'x2nAbT': values['{{CREATED_DATE}}'],
+    'jZvbMg': values['{{CUSTOMER_NAME}}'],
+    'bnGZN1': values['{{CUSTOMER_CR}}'],
+    'Gpnfdu': values['{{CUSTOMER_VAT}}'],
+    'VzkAyN': values['{{CUSTOMER_ADDRESS}}'],
+    'kODtr_': values['{{OWNER_NAME}}'],
+    'j42ryV': values['{{CREATED_DATE}}'],
+    'R-IAxZ': values['{{CONTACT_NAME}}'],
+    'nl1wjI': values['{{CREATED_DATE}}'],
+  };
+
+  for (const [cid, value] of Object.entries(cidValues)) html = replaceCidContent(html, cid, value);
   for (const [marker, value] of Object.entries(values)) html = replaceAll(html, marker, value);
   return renumberPages(html);
 }
