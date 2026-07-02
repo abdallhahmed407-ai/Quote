@@ -44,6 +44,95 @@ function assertConfigured(env: Env): void {
   }
 }
 
+function createPreviewSnapshot(): ProposalSnapshot {
+  return {
+    schemaVersion: 1,
+    dealId: 'PREVIEW',
+    version: 1,
+    createdAt: new Date().toISOString(),
+    deal: {
+      dealname: 'عرض سعر منصة أجور',
+      amount: '66000',
+      deal_currency_code: 'SAR',
+      legal_name_arabic: 'شركة نموذجية للتقنية',
+      legal_name_english: 'Example Technology Company',
+      billing_address: 'الرياض، المملكة العربية السعودية',
+      cr_number: '1010123456',
+      vat_number: '310123456700003',
+    },
+    company: {
+      name: 'شركة نموذجية للتقنية',
+      cr_number: '1010123456',
+      vat_number: '310123456700003',
+      billing_address: 'الرياض، المملكة العربية السعودية',
+      city: 'الرياض',
+      country: 'المملكة العربية السعودية',
+      numberofemployees: '250',
+      website: 'example.com',
+    },
+    contact: {
+      firstname: 'محمد',
+      lastname: 'أحمد',
+      email: 'mohamed@example.com',
+      phone: '+966 50 000 0000',
+      jobtitle: 'مدير الموارد البشرية',
+    },
+    owner: {
+      firstName: 'عبدالله',
+      lastName: 'محمد',
+      email: 'sales@ojoor.net',
+    },
+    lineItems: [
+      {
+        id: 'preview-1',
+        name: 'الاشتراك السنوي في منصة أجور',
+        description: 'إدارة الموارد البشرية والرواتب والخدمة الذاتية للموظفين.',
+        quantity: '1',
+        price: '60000',
+        hs_pre_discount_amount: '60000',
+        hs_total_discount: '5000',
+        amount: '55000',
+        hs_tax_amount: '8250',
+        hs_line_item_currency_code: 'SAR',
+        recurringbillingfrequency: 'annually',
+        hs_sku: 'OJOOR-ANNUAL',
+      },
+      {
+        id: 'preview-2',
+        name: 'التهيئة والإطلاق',
+        description: 'إعداد النظام، استيراد البيانات، التدريب، ودعم الإطلاق.',
+        quantity: '1',
+        price: '8000',
+        hs_pre_discount_amount: '8000',
+        amount: '8000',
+        hs_tax_amount: '1200',
+        hs_line_item_currency_code: 'SAR',
+        hs_sku: 'OJOOR-IMPLEMENTATION',
+      },
+      {
+        id: 'preview-3',
+        name: 'إضافة الخدمة الذاتية للموظفين',
+        description: 'وصول الموظفين إلى الطلبات والمستندات والبيانات الشخصية.',
+        quantity: '250',
+        price: '12',
+        hs_pre_discount_amount: '3000',
+        amount: '3000',
+        hs_tax_amount: '450',
+        hs_line_item_currency_code: 'SAR',
+        recurringbillingfrequency: 'annually',
+        hs_sku: 'OJOOR-ESS',
+      },
+    ],
+    totals: {
+      subtotal: 66000,
+      discount: 5000,
+      tax: 9900,
+      grandTotal: 75900,
+      currency: 'SAR',
+    },
+  };
+}
+
 async function generateOne(env: Env, dealRecord: Record<string, any>, request?: Request): Promise<void> {
   assertConfigured(env);
   const dealId = String(dealRecord.id);
@@ -121,15 +210,7 @@ function htmlHeaders(): HeadersInit {
   };
 }
 
-async function renderFromToken(env: Env, token: string): Promise<{ snapshot: ProposalSnapshot; html: string } | null> {
-  let snapshot: ProposalSnapshot | null;
-  try {
-    snapshot = await snapshotFromToken(env, token);
-  } catch (error) {
-    throw new Error(`SNAPSHOT_LOAD_FAILED: ${safeErrorMessage(error)}`);
-  }
-  if (!snapshot) return null;
-
+async function renderSnapshot(snapshot: ProposalSnapshot): Promise<{ snapshot: ProposalSnapshot; html: string }> {
   let proposalTemplate: string;
   try {
     proposalTemplate = await getProposalTemplate();
@@ -147,6 +228,35 @@ async function renderFromToken(env: Env, token: string): Promise<{ snapshot: Pro
   }
 }
 
+async function renderFromToken(env: Env, token: string): Promise<{ snapshot: ProposalSnapshot; html: string } | null> {
+  let snapshot: ProposalSnapshot | null;
+  try {
+    snapshot = await snapshotFromToken(env, token);
+  } catch (error) {
+    throw new Error(`SNAPSHOT_LOAD_FAILED: ${safeErrorMessage(error)}`);
+  }
+  if (!snapshot) return null;
+  return renderSnapshot(snapshot);
+}
+
+async function renderPdf(env: Env, rendered: { snapshot: ProposalSnapshot; html: string }, filename: string): Promise<Response> {
+  const response = await env.BROWSER.quickAction('pdf', {
+    html: rendered.html,
+    pdfOptions: {
+      format: 'a4',
+      landscape: false,
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: '0', right: '0', bottom: '0', left: '0' },
+    },
+  });
+  const headers = new Headers(response.headers);
+  headers.set('content-type', 'application/pdf');
+  headers.set('content-disposition', `inline; filename="${filename}"`);
+  headers.set('cache-control', 'private, max-age=60');
+  return new Response(response.body, { status: response.status, headers });
+}
+
 async function handleFetch(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
 
@@ -159,9 +269,19 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
       configured: hubspotToken && signingSecret,
       checks: { hubspotToken, signingSecret, adminKey: Boolean(env.ADMIN_KEY) },
       publicBaseUrl: publicBaseUrl(env, request),
-      renderer: 'single-source-template',
+      renderer: 'current-single-source-template',
+      previewUrl: `${publicBaseUrl(env, request)}/preview`,
+      previewPdfUrl: `${publicBaseUrl(env, request)}/preview/pdf`,
       time: new Date().toISOString(),
     });
+  }
+
+  if (url.pathname === '/preview' || url.pathname === '/preview/pdf') {
+    const rendered = await renderSnapshot(createPreviewSnapshot());
+    if (url.pathname === '/preview/pdf') {
+      return renderPdf(env, rendered, 'ojoor-proposal-preview.pdf');
+    }
+    return new Response(rendered.html, { headers: htmlHeaders() });
   }
 
   if (url.pathname === '/admin/run' && request.method === 'POST') {
@@ -179,21 +299,7 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
   if (!rendered) return json({ error: 'Invalid proposal link' }, 404);
 
   if (match[2] === '/pdf') {
-    const response = await env.BROWSER.quickAction('pdf', {
-      html: rendered.html,
-      pdfOptions: {
-        format: 'a4',
-        landscape: false,
-        printBackground: true,
-        preferCSSPageSize: true,
-        margin: { top: '0', right: '0', bottom: '0', left: '0' },
-      },
-    });
-    const headers = new Headers(response.headers);
-    headers.set('content-type', 'application/pdf');
-    headers.set('content-disposition', `inline; filename="ojoor-proposal-v${rendered.snapshot.version}.pdf"`);
-    headers.set('cache-control', 'private, max-age=60');
-    return new Response(response.body, { status: response.status, headers });
+    return renderPdf(env, rendered, `ojoor-proposal-v${rendered.snapshot.version}.pdf`);
   }
 
   return new Response(rendered.html, { headers: htmlHeaders() });
