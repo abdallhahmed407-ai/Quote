@@ -68,6 +68,7 @@ jobs:
             if printf '%s' "$preview" | grep -q 'ojoor-release" content="html-browser-print-v6-riyadh-date' \
               && printf '%s' "$proposal" | grep -q 'ojoor-release" content="html-browser-print-v6-riyadh-date' \
               && printf '%s' "$preview" | grep -q "$expected_date" \
+              && printf '%s' "$proposal" | grep -q "$expected_date" \
               && printf '%s' "$proposal" | grep -q '>طباعة</button>' \
               && ! printf '%s' "$proposal" | grep -q 'تحميل PDF'; then
               verified=1
@@ -79,7 +80,7 @@ jobs:
 
           test "$verified" = "1"
           echo "expected_date=$expected_date" >> "$GITHUB_OUTPUT"
-          echo "Verified Riyadh-local date: $expected_date"
+          echo "Verified Riyadh-local date on preview and live proposal: $expected_date"
 
       - name: Record verified production deployment
         run: |
@@ -88,6 +89,7 @@ jobs:
             "release": "html-browser-print-v6-riyadh-date",
             "source_commit": "${GITHUB_SHA}",
             "cloudflare_verified": true,
+            "live_proposal_verified": true,
             "proposal_time_zone": "Asia/Riyadh",
             "verified_arabic_date": "${{ steps.verify.outputs.expected_date }}",
             "verified_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
