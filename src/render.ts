@@ -129,7 +129,16 @@ function injectDownloadExperience(html: string, downloadPath: string): string {
 
   const controls = `<div class="proposal-print-actions">
     <a class="proposal-print-button" href="${escapeHtml(downloadPath)}">تحميل PDF</a>
-  </div>`;
+  </div>
+  <script>
+    (() => {
+      const removeDownloadControl = () => {
+        document.querySelector('.proposal-print-actions')?.remove();
+      };
+      if (navigator.webdriver) removeDownloadControl();
+      window.addEventListener('beforeprint', removeDownloadControl);
+    })();
+  </script>`;
 
   const withStyle = html.includes('</head>')
     ? html.replace('</head>', `${style}</head>`)
