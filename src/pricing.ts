@@ -17,6 +17,13 @@ export interface PricingOutput {
   extraPages: string;
 }
 
+interface NormalizedTotals {
+  subtotal: number;
+  discount: number;
+  tax: number;
+  grandTotal: number;
+}
+
 export function escapeHtml(value: unknown): string {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -62,14 +69,38 @@ function chunks<T>(items: T[], size: number): T[][] {
   return result.length ? result : [[]];
 }
 
-function itemNumbers(item: JsonObject): { quantity: number; unitPrice: number; discount: number; net: number } {
+function itemNumbers(item: JsonObject): { quantity: number; unitPrice: number; discount: number; net: number; tax: number } {
   const quantity = Math.max(number(item.quantity), 1);
   const unitPrice = number(item.price);
   const gross = number(item.hs_pre_discount_amount) || unitPrice * quantity;
   const discount = number(item.hs_total_discount || item.discount)
     || gross * (number(item.hs_discount_percentage) / 100);
   const net = number(item.amount) || Math.max(gross - discount, 0);
-  return { quantity, unitPrice, discount, net };
+  const tax = number(item.hs_tax_amount);
+  return { quantity, unitPrice, discount, net, tax };
+}
+
+function normalizeTotals(snapshot: ProposalSnapshot): NormalizedTotals {
+  const items = Array.isArray(snapshot.lineItems) ? snapshot.lineItems : [];
+  const calculated = items.reduce<NormalizedTotals>((result, item) => {
+    const values = itemNumbers(item);
+    result.subtotal += values.net;
+    result.discount += values.discount;
+    result.tax += values.tax;
+    result.grandTotal = result.subtotal + result.tax;
+    return result;
+  }, { subtotal: 0, discount: 0, tax: 0, grandTotal: 0 });
+
+  const stored = (snapshot as unknown as {
+    totals?: Partial<ProposalSnapshot['totals']>;
+  }).totals || {};
+
+  const subtotal = stored.subtotal === undefined ? calculated.subtotal : number(stored.subtotal);
+  const discount = stored.discount === undefined ? calculated.discount : number(stored.discount);
+  const tax = stored.tax === undefined ? calculated.tax : number(stored.tax);
+  const grandTotal = stored.grandTotal === undefined ? subtotal + tax : number(stored.grandTotal);
+
+  return { subtotal, discount, tax, grandTotal };
 }
 
 function rows(items: JsonObject[], pageOffset: number, currency: string): string {
@@ -136,7 +167,8 @@ function heading(context: ProposalContext): string {
 }
 
 function totals(snapshot: ProposalSnapshot, context: ProposalContext): string {
-  const gross = number(snapshot.totals.subtotal) + number(snapshot.totals.discount);
+  const normalized = normalizeTotals(snapshot);
+  const gross = normalized.subtotal + normalized.discount;
   return `<div class="pricing-bottom">
     <div class="pricing-note">
       <h3>ملاحظات العرض</h3>
@@ -146,10 +178,10 @@ function totals(snapshot: ProposalSnapshot, context: ProposalContext): string {
     </div>
     <div class="pricing-totals">
       <div class="pricing-total-row"><span>الإجمالي قبل الخصم</span><span>${escapeHtml(money(gross, context.currency))}</span></div>
-      <div class="pricing-total-row"><span>إجمالي الخصم</span><span>${escapeHtml(money(snapshot.totals.discount, context.currency))}</span></div>
-      <div class="pricing-total-row"><span>الإجمالي قبل الضريبة</span><span>${escapeHtml(money(snapshot.totals.subtotal, context.currency))}</span></div>
-      <div class="pricing-total-row"><span>الضريبة</span><span>${escapeHtml(money(snapshot.totals.tax, context.currency))}</span></div>
-      <div class="pricing-total-row grand"><span>الإجمالي النهائي</span><span>${escapeHtml(money(snapshot.totals.grandTotal, context.currency))}</span></div>
+      <div class="pricing-total-row"><span>إجمالي الخصم</span><span>${escapeHtml(money(normalized.discount, context.currency))}</span></div>
+      <div class="pricing-total-row"><span>الإجمالي قبل الضريبة</span><span>${escapeHtml(money(normalized.subtotal, context.currency))}</span></div>
+      <div class="pricing-total-row"><span>الضريبة</span><span>${escapeHtml(money(normalized.tax, context.currency))}</span></div>
+      <div class="pricing-total-row grand"><span>الإجمالي النهائي</span><span>${escapeHtml(money(normalized.grandTotal, context.currency))}</span></div>
     </div>
   </div>`;
 }
@@ -170,7 +202,8 @@ function extraPage(content: string): string {
 }
 
 export function renderPricing(snapshot: ProposalSnapshot, context: ProposalContext): PricingOutput {
-  const groups = chunks(snapshot.lineItems || [], 6);
+  const items = Array.isArray(snapshot.lineItems) ? snapshot.lineItems : [];
+  const groups = chunks(items, 6);
   const firstIsLast = groups.length === 1;
   const firstBody = `${heading(context)}${table(groups[0], 0, context.currency)}${
     firstIsLast ? totals(snapshot, context) : '<div class="pricing-continued">يتبع عرض السعر التفصيلي في الصفحة التالية.</div>'
