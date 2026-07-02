@@ -4,10 +4,24 @@
   "compatibility_date": "2026-06-30",
   "compatibility_flags": ["nodejs_compat_v2"],
   "workers_dev": true,
-  "vars": { "PUBLIC_BASE_URL": "https://quote.abdallhahmed407.workers.dev" },
-  "browser": { "binding": "BROWSER", "remote": true },
+  "vars": {
+    "PUBLIC_BASE_URL": "https://quote.abdallhahmed407.workers.dev"
+  },
+  "browser": {
+    "binding": "BROWSER",
+    "remote": true
+  },
   "rules": [
-    { "type": "Data", "globs": ["**/*.bin"], "fallthrough": true }
+    {
+      "type": "Data",
+      "globs": ["**/*.bin"],
+      "fallthrough": true
+    }
   ],
-  "triggers": { "crons": ["* * * * *"] }
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "observability": {
+    "enabled": true
+  }
 }
