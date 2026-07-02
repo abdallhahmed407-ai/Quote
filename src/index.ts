@@ -203,10 +203,10 @@ async function snapshotFromToken(env: Env, token: string): Promise<ProposalSnaps
 function htmlHeaders(): HeadersInit {
   return {
     'content-type': 'text/html; charset=utf-8',
-    'cache-control': 'private, max-age=60',
+    'cache-control': 'private, no-store',
     'x-robots-tag': 'noindex, nofollow, noarchive',
     'referrer-policy': 'no-referrer',
-    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src https://skyagent-artifacts.skywork.ai data:; base-uri 'none'; frame-ancestors 'none'",
+    'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src https://skyagent-artifacts.skywork.ai data:; base-uri 'none'; frame-ancestors 'none'",
   };
 }
 
