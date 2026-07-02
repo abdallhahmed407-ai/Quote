@@ -1,7 +1,7 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'html-browser-print-v4';
+const RELEASE_MARKER = 'html-browser-print-v5';
 
 function replaceAll(source: string, marker: string, value: string): string {
   return source.split(marker).join(value);
@@ -32,6 +32,12 @@ function renumberPages(html: string): string {
     const number = current++;
     return `<span class="page-num">${number} / ${total}</span>`;
   });
+}
+
+function removeOldProposalActions(html: string): string {
+  return html
+    .replace(/<div class="proposal-print-actions">[\s\S]*?<\/div>/g, '')
+    .replace(/<script>[\s\S]*?(?:downloadOjoorProposal|printOjoorProposal)[\s\S]*?<\/script>/g, '');
 }
 
 function injectPrintExperience(html: string): string {
@@ -168,9 +174,10 @@ function injectPrintExperience(html: string): string {
     }
   </script>`;
 
-  const withStyle = html.includes('</head>')
-    ? html.replace('</head>', `${style}</head>`)
-    : `${style}${html}`;
+  const cleanHtml = removeOldProposalActions(html);
+  const withStyle = cleanHtml.includes('</head>')
+    ? cleanHtml.replace('</head>', `${style}</head>`)
+    : `${style}${cleanHtml}`;
 
   return withStyle.includes('</body>')
     ? withStyle.replace('</body>', `${controls}</body>`)
@@ -240,5 +247,7 @@ export function renderProposal(
 
   for (const [cid, value] of Object.entries(cidValues)) html = replaceCidContent(html, cid, value);
   for (const [marker, value] of Object.entries(values)) html = replaceAll(html, marker, value);
+
+  html = html.replace(/\bOGR-/g, 'OJR-');
   return injectPrintExperience(renumberPages(html));
 }
