@@ -52,9 +52,7 @@ function injectPrintExperience(html: string): string {
       margin: 24px auto 56px;
       padding: 18px;
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
+      justify-content: center;
       box-sizing: border-box;
       direction: rtl;
       font-family: inherit;
@@ -82,13 +80,6 @@ function injectPrintExperience(html: string): string {
     .proposal-print-button:disabled {
       cursor: wait;
       opacity: 0.65;
-    }
-
-    .proposal-print-help {
-      margin: 0;
-      color: #69677c;
-      font-size: 12px;
-      text-align: center;
     }
 
     @media (max-width: 760px) {
@@ -129,8 +120,7 @@ function injectPrintExperience(html: string): string {
   </style>`;
 
   const controls = `<div class="proposal-print-actions">
-    <button class="proposal-print-button" type="button" onclick="printOjoorProposal(this)">طباعة العرض بالألوان</button>
-    <p class="proposal-print-help">سيتم استخدام نفس تصميم وألوان العرض الظاهر أمامك.</p>
+    <button class="proposal-print-button" type="button" onclick="printOjoorProposal(this)">طباعة</button>
   </div>
   <script>
     async function printOjoorProposal(button) {
