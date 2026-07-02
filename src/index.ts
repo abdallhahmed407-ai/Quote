@@ -1,34 +1,32 @@
 import type { Env, ProposalSnapshot } from './types';
-import { buildSnapshot, createSnapshotNote, patchDeal, readSnapshotNote, searchPendingDeals } from './hubspot';
+import {
+  buildSnapshot,
+  createSnapshotNote,
+  patchDeal,
+  readSnapshotNote,
+  searchPendingDeals,
+} from './hubspot';
+import { renderProposal } from './render';
 import { createPublicToken, verifyPublicToken } from './security';
-import { renderProposal } from './render-exact';
+import { getProposalTemplate } from './template';
 
 const DEFAULT_PUBLIC_BASE_URL = 'https://quote.abdallhahmed407.workers.dev';
 
-const json = (data: unknown, status = 200) => new Response(JSON.stringify(data, null, 2), {
-  status,
-  headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
-});
-
-function resolvedBaseUrl(env: Env): string {
-  return String(env.PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE_URL).trim().replace(/\/$/, '');
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+    },
+  });
 }
 
-function configurationChecks(env: Env) {
-  const hubspotToken = Boolean(env.HUBSPOT_ACCESS_TOKEN);
-  const signingSecret = Boolean(env.PROPOSAL_SIGNING_SECRET && env.PROPOSAL_SIGNING_SECRET.length >= 32);
-  const publicBaseUrl = Boolean(resolvedBaseUrl(env));
-  const adminKey = Boolean(env.ADMIN_KEY && env.ADMIN_KEY.length >= 32);
-
-  return {
-    configured: hubspotToken && signingSecret && publicBaseUrl,
-    checks: {
-      hubspotToken,
-      signingSecret,
-      publicBaseUrl,
-      adminKey,
-    },
-  };
+function publicBaseUrl(env: Env, request?: Request): string {
+  const configured = String(env.PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE_URL).trim().replace(/\/$/, '');
+  if (configured) return configured;
+  if (request) return new URL(request.url).origin;
+  return DEFAULT_PUBLIC_BASE_URL;
 }
 
 function assertConfigured(env: Env): void {
@@ -38,17 +36,10 @@ function assertConfigured(env: Env): void {
   }
 }
 
-function baseUrl(env: Env, request?: Request): string {
-  const configured = resolvedBaseUrl(env);
-  if (configured) return configured;
-  if (request) return new URL(request.url).origin;
-  return DEFAULT_PUBLIC_BASE_URL;
-}
-
 async function generateOne(env: Env, dealRecord: Record<string, any>, request?: Request): Promise<void> {
   assertConfigured(env);
   const dealId = String(dealRecord.id);
-  const root = baseUrl(env, request);
+  const root = publicBaseUrl(env, request);
   const nextVersion = (Number(dealRecord.properties?.proposal_version || 0) || 0) + 1;
 
   await patchDeal(env, dealId, {
@@ -61,7 +52,10 @@ async function generateOne(env: Env, dealRecord: Record<string, any>, request?: 
     const snapshot = await buildSnapshot(env, dealId, nextVersion);
     const noteId = await createSnapshotNote(env, snapshot);
     snapshot.noteId = noteId;
-    const token = await createPublicToken({ n: noteId, d: dealId, v: nextVersion }, env.PROPOSAL_SIGNING_SECRET);
+    const token = await createPublicToken(
+      { n: noteId, d: dealId, v: nextVersion },
+      env.PROPOSAL_SIGNING_SECRET,
+    );
     const proposalUrl = `${root}/p/${token}`;
 
     await patchDeal(env, dealId, {
@@ -109,15 +103,39 @@ async function snapshotFromToken(env: Env, token: string): Promise<ProposalSnaps
   return snapshot;
 }
 
+function htmlHeaders(): HeadersInit {
+  return {
+    'content-type': 'text/html; charset=utf-8',
+    'cache-control': 'private, max-age=60',
+    'x-robots-tag': 'noindex, nofollow, noarchive',
+    'referrer-policy': 'no-referrer',
+    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src https://skyagent-artifacts.skywork.ai data:; base-uri 'none'; frame-ancestors 'none'",
+  };
+}
+
+async function renderFromToken(env: Env, token: string): Promise<{ snapshot: ProposalSnapshot; html: string } | null> {
+  const snapshot = await snapshotFromToken(env, token);
+  if (!snapshot) return null;
+  const proposalTemplate = await getProposalTemplate();
+  return {
+    snapshot,
+    html: renderProposal(snapshot, proposalTemplate),
+  };
+}
+
 async function handleFetch(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
+
   if (url.pathname === '/' || url.pathname === '/health') {
-    const configuration = configurationChecks(env);
+    const hubspotToken = Boolean(env.HUBSPOT_ACCESS_TOKEN);
+    const signingSecret = Boolean(env.PROPOSAL_SIGNING_SECRET && env.PROPOSAL_SIGNING_SECRET.length >= 32);
     return json({
       ok: true,
       service: 'Ojoor Proposal Generator',
-      ...configuration,
-      publicBaseUrl: resolvedBaseUrl(env),
+      configured: hubspotToken && signingSecret,
+      checks: { hubspotToken, signingSecret, adminKey: Boolean(env.ADMIN_KEY) },
+      publicBaseUrl: publicBaseUrl(env, request),
+      renderer: 'single-source-template',
       time: new Date().toISOString(),
     });
   }
@@ -133,13 +151,12 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
   const match = url.pathname.match(/^\/p\/([^/]+)(\/pdf)?$/);
   if (!match) return json({ error: 'Not found' }, 404);
 
-  const snapshot = await snapshotFromToken(env, match[1]);
-  if (!snapshot) return json({ error: 'Invalid proposal link' }, 404);
-  const html = renderProposal(snapshot);
+  const rendered = await renderFromToken(env, match[1]);
+  if (!rendered) return json({ error: 'Invalid proposal link' }, 404);
 
   if (match[2] === '/pdf') {
     const response = await env.BROWSER.quickAction('pdf', {
-      html,
+      html: rendered.html,
       pdfOptions: {
         format: 'a4',
         landscape: false,
@@ -150,20 +167,12 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
     });
     const headers = new Headers(response.headers);
     headers.set('content-type', 'application/pdf');
-    headers.set('content-disposition', `inline; filename="ojoor-proposal-v${snapshot.version}.pdf"`);
-    headers.set('cache-control', 'private, max-age=300');
+    headers.set('content-disposition', `inline; filename="ojoor-proposal-v${rendered.snapshot.version}.pdf"`);
+    headers.set('cache-control', 'private, max-age=60');
     return new Response(response.body, { status: response.status, headers });
   }
 
-  return new Response(html, {
-    headers: {
-      'content-type': 'text/html; charset=utf-8',
-      'cache-control': 'private, max-age=300',
-      'x-robots-tag': 'noindex, nofollow, noarchive',
-      'referrer-policy': 'no-referrer',
-      'content-security-policy': "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data: https://skyagent-artifacts.skywork.ai; base-uri 'none'; frame-ancestors 'none'",
-    },
-  });
+  return new Response(rendered.html, { headers: htmlHeaders() });
 }
 
 export default {
@@ -173,7 +182,11 @@ export default {
       return json({ error: 'Internal server error' }, 500);
     });
   },
-  async scheduled(_controller: unknown, env: Env, ctx: { waitUntil(promise: Promise<unknown>): void }): Promise<void> {
+  async scheduled(
+    _controller: unknown,
+    env: Env,
+    ctx: { waitUntil(promise: Promise<unknown>): void },
+  ): Promise<void> {
     ctx.waitUntil(processPending(env).then((result) => console.log('Cron result', result)));
   },
 };

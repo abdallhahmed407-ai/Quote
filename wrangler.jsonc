@@ -1,33 +1,13 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "quote",
-  "main": "src/entry.ts",
+  "main": "src/index.ts",
   "compatibility_date": "2026-06-30",
   "compatibility_flags": ["nodejs_compat_v2"],
   "workers_dev": true,
-  "vars": {
-    "PUBLIC_BASE_URL": "https://quote.abdallhahmed407.workers.dev"
-  },
-  "browser": {
-    "binding": "BROWSER",
-    "remote": true
-  },
-  "triggers": {
-    "crons": ["* * * * *"]
-  },
-  "observability": {
-    "enabled": true,
-    "head_sampling_rate": 1,
-    "logs": {
-      "enabled": true,
-      "head_sampling_rate": 1,
-      "persist": true,
-      "invocation_logs": true
-    },
-    "traces": {
-      "enabled": false,
-      "persist": true,
-      "head_sampling_rate": 1
-    }
-  }
+  "vars": { "PUBLIC_BASE_URL": "https://quote.abdallhahmed407.workers.dev" },
+  "browser": { "binding": "BROWSER", "remote": true },
+  "rules": [
+    { "type": "Data", "globs": ["**/*.bin"], "fallthrough": true }
+  ],
+  "triggers": { "crons": ["* * * * *"] }
 }

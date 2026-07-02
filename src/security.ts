@@ -25,7 +25,10 @@ export async function verifyPublicToken(token: string, secret: string): Promise<
   try {
     const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
     const signatureBytes = base64UrlToBytes(encodedSignature);
-    const signature = signatureBytes.buffer.slice(signatureBytes.byteOffset, signatureBytes.byteOffset + signatureBytes.byteLength) as ArrayBuffer;
+    const signature = signatureBytes.buffer.slice(
+      signatureBytes.byteOffset,
+      signatureBytes.byteOffset + signatureBytes.byteLength,
+    ) as ArrayBuffer;
     const valid = await crypto.subtle.verify('HMAC', key, signature, encoder.encode(encodedPayload));
     if (!valid) return null;
     return JSON.parse(new TextDecoder().decode(base64UrlToBytes(encodedPayload)));

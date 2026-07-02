@@ -1,6 +1,6 @@
 {
-  "name": "ojoor-custom-proposal-generator",
-  "version": "1.0.0",
+  "name": "ojoor-proposal-generator",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {

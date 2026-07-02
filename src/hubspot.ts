@@ -1,17 +1,60 @@
 import type { Env, JsonObject, ProposalSnapshot } from './types';
 
 const API = 'https://api.hubapi.com';
+
 const DEAL_PROPERTIES = [
-  'dealname','amount','deal_currency_code','closedate','hubspot_owner_id',
-  'billing_address','cr_number','vat_number','legal_name_arabic','legal_name_english',
-  'generate_proposal','proposal_status','proposal_url','proposal_pdf_url','proposal_version','proposal_generated_at','proposal_error'
+  'dealname',
+  'amount',
+  'deal_currency_code',
+  'closedate',
+  'hubspot_owner_id',
+  'billing_address',
+  'cr_number',
+  'vat_number',
+  'legal_name_arabic',
+  'legal_name_english',
+  'generate_proposal',
+  'proposal_status',
+  'proposal_url',
+  'proposal_pdf_url',
+  'proposal_version',
+  'proposal_generated_at',
+  'proposal_error',
 ];
-const COMPANY_PROPERTIES = ['name','cr_number','vat_number','billing_address','address','address2','city','state','country','zip','numberofemployees','phone','website'];
-const CONTACT_PROPERTIES = ['firstname','lastname','email','phone','jobtitle'];
+
+const COMPANY_PROPERTIES = [
+  'name',
+  'cr_number',
+  'vat_number',
+  'billing_address',
+  'address',
+  'address2',
+  'city',
+  'state',
+  'country',
+  'zip',
+  'numberofemployees',
+  'phone',
+  'website',
+];
+
+const CONTACT_PROPERTIES = ['firstname', 'lastname', 'email', 'phone', 'jobtitle'];
+
 const LINE_ITEM_PROPERTIES = [
-  'name','description','quantity','price','amount','discount','hs_discount_percentage',
-  'hs_total_discount','hs_pre_discount_amount','hs_tax_amount','hs_post_tax_amount',
-  'hs_line_item_currency_code','recurringbillingfrequency','hs_sku'
+  'name',
+  'description',
+  'quantity',
+  'price',
+  'amount',
+  'discount',
+  'hs_discount_percentage',
+  'hs_total_discount',
+  'hs_pre_discount_amount',
+  'hs_tax_amount',
+  'hs_post_tax_amount',
+  'hs_line_item_currency_code',
+  'recurringbillingfrequency',
+  'hs_sku',
 ];
 
 async function request<T>(env: Env, path: string, init: RequestInit = {}): Promise<T> {
@@ -23,6 +66,7 @@ async function request<T>(env: Env, path: string, init: RequestInit = {}): Promi
       ...(init.headers || {}),
     },
   });
+
   if (!response.ok) {
     const body = await response.text();
     throw new Error(`HubSpot ${response.status}: ${body.slice(0, 1200)}`);
@@ -35,7 +79,13 @@ export async function searchPendingDeals(env: Env): Promise<JsonObject[]> {
   const result = await request<JsonObject>(env, '/crm/v3/objects/deals/search', {
     method: 'POST',
     body: JSON.stringify({
-      filterGroups: [{ filters: [{ propertyName: 'generate_proposal', operator: 'IN', values: ['generate', 'regenerate'] }] }],
+      filterGroups: [{
+        filters: [{
+          propertyName: 'generate_proposal',
+          operator: 'IN',
+          values: ['generate', 'regenerate'],
+        }],
+      }],
       properties: DEAL_PROPERTIES,
       limit: 10,
       sorts: ['hs_lastmodifieddate'],
@@ -51,10 +101,12 @@ export async function patchDeal(env: Env, dealId: string, properties: Record<str
   });
 }
 
-function associationIds(deal: JsonObject, key: string): string[] {
-  const associations = deal.associations || {};
+function associationIds(record: JsonObject, key: string): string[] {
+  const associations = record.associations || {};
   const normalizedKey = key.replace(/[^a-z0-9]/gi, '').toLowerCase();
-  const matchedKey = Object.keys(associations).find((candidate) => candidate.replace(/[^a-z0-9]/gi, '').toLowerCase() === normalizedKey);
+  const matchedKey = Object.keys(associations).find(
+    (candidate) => candidate.replace(/[^a-z0-9]/gi, '').toLowerCase() === normalizedKey,
+  );
   return (matchedKey ? associations[matchedKey]?.results : []).map((item: JsonObject) => String(item.id));
 }
 
@@ -68,13 +120,21 @@ async function readOwnerSafely(env: Env, ownerId?: string): Promise<JsonObject> 
   try {
     return await request<JsonObject>(env, `/crm/v3/owners/${ownerId}?idProperty=id`);
   } catch (error) {
-    console.warn('Owner lookup skipped; proposal will use fallback sender details.', error);
+    console.warn('Owner lookup skipped; proposal will use blank sender details.', error);
     return {};
   }
 }
 
+function number(value: unknown): number {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export async function buildSnapshot(env: Env, dealId: string, version: number): Promise<ProposalSnapshot> {
-  const query = new URLSearchParams({ properties: DEAL_PROPERTIES.join(','), associations: 'companies,contacts,line_items' });
+  const query = new URLSearchParams({
+    properties: DEAL_PROPERTIES.join(','),
+    associations: 'companies,contacts,line_items',
+  });
   const dealRecord = await request<JsonObject>(env, `/crm/v3/objects/deals/${dealId}?${query}`);
   const companyId = associationIds(dealRecord, 'companies')[0];
   const contactId = associationIds(dealRecord, 'contacts')[0];
@@ -95,18 +155,14 @@ export async function buildSnapshot(env: Env, dealId: string, version: number): 
   if (!company.name && !deal.legal_name_arabic && !deal.legal_name_english && !deal.dealname) {
     throw new Error('Missing customer/company name. Associate a company or complete the Deal legal name.');
   }
-  if (lineItems.length === 0 && Number(deal.amount || 0) <= 0) {
+  if (lineItems.length === 0 && number(deal.amount) <= 0) {
     throw new Error('Missing pricing. Add Line Items or enter a positive Deal Amount.');
   }
 
   const currency = deal.deal_currency_code || lineItems[0]?.hs_line_item_currency_code || 'SAR';
-  let subtotal = 0;
-  let discount = 0;
-  let tax = 0;
-
   const normalizedItems = lineItems.length ? lineItems : [{
     id: `deal-${dealId}`,
-    name: deal.dealname || 'Ojoor HR & Payroll Subscription',
+    name: deal.dealname || 'اشتراك منصة أجور',
     description: 'Deal amount fallback',
     quantity: '1',
     price: String(deal.amount || 0),
@@ -114,14 +170,18 @@ export async function buildSnapshot(env: Env, dealId: string, version: number): 
     hs_line_item_currency_code: currency,
   }];
 
+  let subtotal = 0;
+  let discount = 0;
+  let tax = 0;
   for (const item of normalizedItems) {
-    const quantity = Math.max(Number(item.quantity || 1), 1);
-    const gross = Number(item.hs_pre_discount_amount || 0) || Number(item.price || 0) * quantity;
-    const itemDiscount = Number(item.hs_total_discount || item.discount || 0) || gross * (Number(item.hs_discount_percentage || 0) / 100);
-    const net = Number(item.amount || 0) || Math.max(gross - itemDiscount, 0);
+    const quantity = Math.max(number(item.quantity), 1);
+    const gross = number(item.hs_pre_discount_amount) || number(item.price) * quantity;
+    const itemDiscount = number(item.hs_total_discount || item.discount)
+      || gross * (number(item.hs_discount_percentage) / 100);
+    const net = number(item.amount) || Math.max(gross - itemDiscount, 0);
     subtotal += net;
     discount += itemDiscount;
-    tax += Number(item.hs_tax_amount || 0);
+    tax += number(item.hs_tax_amount);
   }
 
   return {
@@ -160,7 +220,7 @@ function decodeSnapshot(value: string): ProposalSnapshot {
 
 function snapshotToNoteBody(snapshot: ProposalSnapshot): string {
   const encoded = encodeSnapshot(snapshot);
-  return `<p><strong>Ojoor Proposal V${snapshot.version}</strong> — system snapshot. Do not edit.</p><p>OJOOR_SNAPSHOT_V1:${encoded}</p>`;
+  return `<p><strong>Ojoor Proposal V${snapshot.version}</strong> - system snapshot. Do not edit.</p><p>OJOOR_SNAPSHOT_V1:${encoded}</p>`;
 }
 
 export async function createSnapshotNote(env: Env, snapshot: ProposalSnapshot): Promise<string> {
