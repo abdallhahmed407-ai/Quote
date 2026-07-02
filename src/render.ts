@@ -1,6 +1,8 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
+const RELEASE_MARKER = 'arabic-meta-signatures-v2';
+
 function replaceAll(source: string, marker: string, value: string): string {
   return source.split(marker).join(value);
 }
@@ -33,7 +35,8 @@ function renumberPages(html: string): string {
 }
 
 function injectDownloadExperience(html: string): string {
-  const style = `<style>
+  const style = `<meta name="ojoor-release" content="${RELEASE_MARKER}">
+  <style>
     .pricing-bottom-totals-only {
       display: flex !important;
       direction: ltr !important;
