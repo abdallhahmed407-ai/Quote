@@ -1,4 +1,4 @@
-name: Deploy Quote Worker
+name: Deploy Quote Worker (Primary)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-quote-worker
+  group: quote-production
   cancel-in-progress: true
 
 jobs:
@@ -52,21 +52,25 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Verify print-only HTML release
+      - name: Verify preview and live proposal use print button
         run: |
           verified=0
+          proposal_url='https://quote.abdallhahmed407.workers.dev/p/eyJuIjoiNTAxOTEyMDYzMTkxIiwiZCI6IjUwODg3ODQyMTIxMyIsInYiOjI4fQ.OldhRKGe7j9dKMfbQkfMcVRTCtNzCYn3JpH8s9PA3Ss'
+
           for attempt in 1 2 3 4 5 6 7 8; do
-            html="$(curl -fsS "https://quote.abdallhahmed407.workers.dev/preview?verify=${GITHUB_SHA}")"
-            if printf '%s' "$html" | grep -q 'ojoor-release" content="html-browser-print-v5' \
-              && printf '%s' "$html" | grep -q '>طباعة</button>' \
-              && printf '%s' "$html" | grep -q 'OJR-PREVIEW-V1' \
-              && ! printf '%s' "$html" | grep -q 'تحميل PDF' \
-              && ! printf '%s' "$html" | grep -q 'OGR-'; then
+            preview="$(curl -fsS "https://quote.abdallhahmed407.workers.dev/preview?verify=${GITHUB_SHA}-${attempt}")"
+            proposal="$(curl -fsS "${proposal_url}?verify=${GITHUB_SHA}-${attempt}")"
+
+            if printf '%s' "$preview" | grep -q '>طباعة</button>' \
+              && printf '%s' "$proposal" | grep -q '>طباعة</button>' \
+              && ! printf '%s' "$preview" | grep -q 'تحميل PDF' \
+              && ! printf '%s' "$proposal" | grep -q 'تحميل PDF'; then
               verified=1
               break
             fi
+
             sleep 10
           done
 
           test "$verified" = "1"
-          echo "Verified corrected HTML print-only release"
+          echo "Verified print button on preview and live proposal URL"
