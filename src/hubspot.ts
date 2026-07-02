@@ -120,7 +120,7 @@ async function readOwnerSafely(env: Env, ownerId?: string): Promise<JsonObject> 
   try {
     return await request<JsonObject>(env, `/crm/v3/owners/${ownerId}?idProperty=id`);
   } catch (error) {
-    console.warn('Owner lookup skipped; proposal will use blank sender details.', error);
+    console.warn('Owner lookup skipped.', error);
     return {};
   }
 }
@@ -128,6 +128,44 @@ async function readOwnerSafely(env: Env, ownerId?: string): Promise<JsonObject> 
 function number(value: unknown): number {
   const parsed = Number(value || 0);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isBlank(value: unknown): boolean {
+  return value === undefined || value === null || String(value).trim() === '';
+}
+
+function validateRequiredFields(
+  deal: JsonObject,
+  company: JsonObject,
+  owner: JsonObject,
+  lineItems: JsonObject[],
+): void {
+  const customerCr = company.cr_number || deal.cr_number;
+  const customerVat = company.vat_number || deal.vat_number;
+  const customerAddress = company.billing_address || deal.billing_address || [
+    company.address,
+    company.address2,
+    company.city,
+    company.state,
+    company.country,
+    company.zip,
+  ].filter(Boolean).join('، ');
+  const ownerName = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim();
+
+  if (isBlank(deal.legal_name_arabic)) throw new Error('Please fill Legal Name (Arabic).');
+  if (isBlank(deal.proposal_expiration_date)) throw new Error('Please fill Proposal Expiration Date.');
+  if (isBlank(deal.hubspot_owner_id) || isBlank(ownerName)) throw new Error('Please assign Deal Owner.');
+  if (isBlank(customerCr)) throw new Error('Please fill CR Number.');
+  if (isBlank(customerVat)) throw new Error('Please fill VAT Number.');
+  if (isBlank(customerAddress)) throw new Error('Please fill Billing Address.');
+  if (lineItems.length === 0) throw new Error('Please add Line Item.');
+
+  lineItems.forEach((item, index) => {
+    const lineNumber = index + 1;
+    if (isBlank(item.name)) throw new Error(`Please fill Line Item ${lineNumber} Name.`);
+    if (isBlank(item.quantity)) throw new Error(`Please fill Line Item ${lineNumber} Quantity.`);
+    if (isBlank(item.price)) throw new Error(`Please fill Line Item ${lineNumber} Price.`);
+  });
 }
 
 export async function buildSnapshot(env: Env, dealId: string, version: number): Promise<ProposalSnapshot> {
@@ -152,13 +190,7 @@ export async function buildSnapshot(env: Env, dealId: string, version: number): 
   const contact = contactRecord.properties || {};
   const lineItems = lineItemRecords.map((record) => ({ id: record.id, ...(record.properties || {}) }));
 
-  if (!company.name && !deal.legal_name_arabic && !deal.legal_name_english && !deal.dealname) {
-    throw new Error('Missing customer/company name. Associate a company or complete the Deal legal name.');
-  }
-
-  if (lineItems.length === 0) {
-    throw new Error('Missing Line Items. Add at least one Line Item to the Deal before generating the proposal. Deal Amount is not used for proposal pricing.');
-  }
+  validateRequiredFields(deal, company, ownerRecord || {}, lineItems);
 
   const currency = lineItems[0]?.hs_line_item_currency_code || deal.deal_currency_code || 'SAR';
 
