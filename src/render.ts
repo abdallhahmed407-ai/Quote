@@ -7,7 +7,7 @@ function replaceAll(source: string, marker: string, value: string): string {
 
 function replaceCidContent(source: string, cid: string, value: string): string {
   const escapedCid = cid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(`(<(?:span|div)[^>]*data-cid=\"${escapedCid}\"[^>]*>)(.*?)(</(?:span|div)>)`, 's');
+  const pattern = new RegExp(`(<(?:span|div)[^>]*data-cid="${escapedCid}"[^>]*>)(.*?)(</(?:span|div)>)`, 's');
   return source.replace(pattern, (_match, opening: string, _content: string, closing: string) =>
     `${opening}${value}${closing}`);
 }
@@ -80,10 +80,10 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string): st
     'bnGZN1': values['{{CUSTOMER_CR}}'],
     'Gpnfdu': values['{{CUSTOMER_VAT}}'],
     'VzkAyN': values['{{CUSTOMER_ADDRESS}}'],
-    'kODtr_': values['{{OWNER_NAME}}'],
-    'j42ryV': values['{{CREATED_DATE}}'],
-    'R-IAxZ': values['{{CONTACT_NAME}}'],
-    'nl1wjI': values['{{CREATED_DATE}}'],
+    'kODtr_': '',
+    'j42ryV': '',
+    'R-IAxZ': '',
+    'nl1wjI': '',
   };
 
   for (const [cid, value] of Object.entries(cidValues)) html = replaceCidContent(html, cid, value);
