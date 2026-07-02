@@ -4,7 +4,6 @@ const API = 'https://api.hubapi.com';
 
 const DEAL_PROPERTIES = [
   'dealname',
-  'amount',
   'deal_currency_code',
   'closedate',
   'hubspot_owner_id',
@@ -155,25 +154,17 @@ export async function buildSnapshot(env: Env, dealId: string, version: number): 
   if (!company.name && !deal.legal_name_arabic && !deal.legal_name_english && !deal.dealname) {
     throw new Error('Missing customer/company name. Associate a company or complete the Deal legal name.');
   }
-  if (lineItems.length === 0 && number(deal.amount) <= 0) {
-    throw new Error('Missing pricing. Add Line Items or enter a positive Deal Amount.');
+
+  if (lineItems.length === 0) {
+    throw new Error('Missing Line Items. Add at least one Line Item to the Deal before generating the proposal. Deal Amount is not used for proposal pricing.');
   }
 
-  const currency = deal.deal_currency_code || lineItems[0]?.hs_line_item_currency_code || 'SAR';
-  const normalizedItems = lineItems.length ? lineItems : [{
-    id: `deal-${dealId}`,
-    name: deal.dealname || 'اشتراك منصة أجور',
-    description: 'Deal amount fallback',
-    quantity: '1',
-    price: String(deal.amount || 0),
-    amount: String(deal.amount || 0),
-    hs_line_item_currency_code: currency,
-  }];
+  const currency = lineItems[0]?.hs_line_item_currency_code || deal.deal_currency_code || 'SAR';
 
   let subtotal = 0;
   let discount = 0;
   let tax = 0;
-  for (const item of normalizedItems) {
+  for (const item of lineItems) {
     const quantity = Math.max(number(item.quantity), 1);
     const gross = number(item.hs_pre_discount_amount) || number(item.price) * quantity;
     const itemDiscount = number(item.hs_total_discount || item.discount)
@@ -193,7 +184,7 @@ export async function buildSnapshot(env: Env, dealId: string, version: number): 
     company,
     contact,
     owner: ownerRecord || {},
-    lineItems: normalizedItems,
+    lineItems,
     totals: {
       subtotal,
       discount,
