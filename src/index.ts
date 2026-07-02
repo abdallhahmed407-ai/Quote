@@ -258,11 +258,26 @@ async function renderPdf(
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
     },
   });
-  const headers = new Headers(response.headers);
-  headers.set('content-type', 'application/pdf');
-  headers.set('content-disposition', `${forceDownload ? 'attachment' : 'inline'}; filename="${filename}"`);
-  headers.set('cache-control', 'private, no-store');
-  return new Response(response.body, { status: response.status, headers });
+
+  const pdfBytes = await response.arrayBuffer();
+  const pdfSignature = new TextDecoder().decode(pdfBytes.slice(0, 5));
+  if (!response.ok || pdfBytes.byteLength < 5 || pdfSignature !== '%PDF-') {
+    throw new Error(
+      `PDF_RENDER_FAILED: status=${response.status}; contentType=${response.headers.get('content-type') || 'unknown'}; bytes=${pdfBytes.byteLength}`,
+    );
+  }
+
+  const headers = new Headers({
+    'content-type': 'application/pdf',
+    'content-disposition': `${forceDownload ? 'attachment' : 'inline'}; filename="${filename}"`,
+    'content-length': String(pdfBytes.byteLength),
+    'cache-control': 'private, no-store, max-age=0',
+    'x-content-type-options': 'nosniff',
+  });
+  const browserTime = response.headers.get('x-browser-ms-used');
+  if (browserTime) headers.set('x-browser-ms-used', browserTime);
+
+  return new Response(pdfBytes, { status: 200, headers });
 }
 
 async function handleFetch(request: Request, env: Env): Promise<Response> {
@@ -285,9 +300,13 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
   }
 
   if (url.pathname === '/preview' || url.pathname === '/preview/pdf') {
-    const rendered = await renderSnapshot(createPreviewSnapshot());
     const shouldDownload = url.searchParams.has('download');
-    if (url.pathname === '/preview/pdf' || shouldDownload) {
+    if (url.pathname === '/preview' && shouldDownload) {
+      return Response.redirect(`${url.origin}/preview/pdf?download=1`, 302);
+    }
+
+    const rendered = await renderSnapshot(createPreviewSnapshot());
+    if (url.pathname === '/preview/pdf') {
       return renderPdf(env, rendered, 'Ojoor-Proposal-PREVIEW-V1.pdf', shouldDownload);
     }
     return new Response(rendered.html, { headers: htmlHeaders() });
@@ -304,11 +323,15 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
   const match = url.pathname.match(/^\/p\/([^/]+)(\/pdf)?$/);
   if (!match) return json({ error: 'Not found' }, 404);
 
+  const shouldDownload = url.searchParams.has('download');
+  if (!match[2] && shouldDownload) {
+    return Response.redirect(`${url.origin}${url.pathname}/pdf?download=1`, 302);
+  }
+
   const rendered = await renderFromToken(env, match[1]);
   if (!rendered) return json({ error: 'Invalid proposal link' }, 404);
 
-  const shouldDownload = url.searchParams.has('download');
-  if (match[2] === '/pdf' || shouldDownload) {
+  if (match[2] === '/pdf') {
     return renderPdf(
       env,
       rendered,
