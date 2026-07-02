@@ -56,6 +56,7 @@ function createPreviewSnapshot(): ProposalSnapshot {
       deal_currency_code: 'SAR',
       legal_name_arabic: 'شركة نموذجية للتقنية',
       legal_name_english: 'Example Technology Company',
+      proposal_expiration_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
       billing_address: 'الرياض، المملكة العربية السعودية',
       cr_number: '1010123456',
       vat_number: '310123456700003',
@@ -206,7 +207,7 @@ function htmlHeaders(): HeadersInit {
     'cache-control': 'private, no-store',
     'x-robots-tag': 'noindex, nofollow, noarchive',
     'referrer-policy': 'no-referrer',
-    'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src https://skyagent-artifacts.skywork.ai data:; base-uri 'none'; frame-ancestors 'none'",
+    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src https://skyagent-artifacts.skywork.ai data:; base-uri 'none'; frame-ancestors 'none'",
   };
 }
 
@@ -285,8 +286,9 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
 
   if (url.pathname === '/preview' || url.pathname === '/preview/pdf') {
     const rendered = await renderSnapshot(createPreviewSnapshot());
-    if (url.pathname === '/preview/pdf') {
-      return renderPdf(env, rendered, 'Ojoor-Proposal-PREVIEW-V1.pdf', url.searchParams.has('download'));
+    const shouldDownload = url.searchParams.has('download');
+    if (url.pathname === '/preview/pdf' || shouldDownload) {
+      return renderPdf(env, rendered, 'Ojoor-Proposal-PREVIEW-V1.pdf', shouldDownload);
     }
     return new Response(rendered.html, { headers: htmlHeaders() });
   }
@@ -305,12 +307,13 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
   const rendered = await renderFromToken(env, match[1]);
   if (!rendered) return json({ error: 'Invalid proposal link' }, 404);
 
-  if (match[2] === '/pdf') {
+  const shouldDownload = url.searchParams.has('download');
+  if (match[2] === '/pdf' || shouldDownload) {
     return renderPdf(
       env,
       rendered,
       `Ojoor-Proposal-OJR-${rendered.snapshot.dealId}-V${rendered.snapshot.version}.pdf`,
-      url.searchParams.has('download'),
+      shouldDownload,
     );
   }
 
