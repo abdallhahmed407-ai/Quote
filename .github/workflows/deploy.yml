@@ -35,3 +35,15 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Verify deployed release
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS "https://quote.abdallhahmed407.workers.dev/preview?verify=${GITHUB_SHA}" | grep -q 'ojoor-release" content="arabic-meta-signatures-v2'; then
+              echo "Verified deployed release arabic-meta-signatures-v2"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "The Worker did not serve the expected release marker."
+          exit 1
