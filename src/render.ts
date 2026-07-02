@@ -179,7 +179,7 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string): st
     createdDate: formatArabicDate(snapshot.createdAt),
     expirationDate: formatArabicDate(deal.proposal_expiration_date),
     currency: snapshot.totals?.currency || 'SAR',
-    quoteNumber: `OGR-${snapshot.dealId}-V${snapshot.version}`,
+    quoteNumber: `OJR-${snapshot.dealId}-V${snapshot.version}`,
   };
 
   const pricing = renderPricing(snapshot, context);
@@ -204,9 +204,9 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string): st
     'bnGZN1': values['{{CUSTOMER_CR}}'],
     'Gpnfdu': values['{{CUSTOMER_VAT}}'],
     'VzkAyN': values['{{CUSTOMER_ADDRESS}}'],
-    'kODtr_': '',
-    'j42ryV': '',
-    'R-IAxZ': values['{{CUSTOMER_NAME}}'],
+    'kODtr_': values['{{OWNER_NAME}}'],
+    'j42ryV': values['{{CREATED_DATE}}'],
+    'R-IAxZ': '',
     'nl1wjI': '',
   };
 
