@@ -71,16 +71,16 @@ function injectDownloadExperience(html: string): string {
       font-size: 15px;
       font-weight: 800;
       cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
     }
 
     .proposal-print-button:hover {
       transform: translateY(-1px);
       box-shadow: 0 12px 28px rgba(26, 43, 110, 0.28);
-    }
-
-    .proposal-print-button:disabled {
-      cursor: wait;
-      opacity: 0.65;
     }
 
     @media (max-width: 760px) {
@@ -125,24 +125,8 @@ function injectDownloadExperience(html: string): string {
   </style>`;
 
   const controls = `<div class="proposal-print-actions">
-    <button class="proposal-print-button" type="button" onclick="downloadOjoorProposal(this)">تحميل PDF</button>
-  </div>
-  <script>
-    function downloadOjoorProposal(button) {
-      button.disabled = true;
-      const originalText = button.textContent;
-      button.textContent = 'جاري تجهيز الملف...';
-
-      const currentPath = window.location.pathname.replace(/\/$/, '');
-      const pdfPath = currentPath === '/preview' ? '/preview/pdf' : currentPath + '/pdf';
-      window.location.assign(pdfPath + '?download=1&t=' + Date.now());
-
-      window.setTimeout(() => {
-        button.disabled = false;
-        button.textContent = originalText;
-      }, 5000);
-    }
-  </script>`;
+    <a class="proposal-print-button" href="?download=1">تحميل PDF</a>
+  </div>`;
 
   const withStyle = html.includes('</head>')
     ? html.replace('</head>', `${style}</head>`)
