@@ -22,6 +22,14 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+function safeErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message
+    .replace(/Bearer\s+[A-Za-z0-9._~-]+/gi, 'Bearer [redacted]')
+    .replace(/([?&](?:access_token|token)=)[^&\s]+/gi, '$1[redacted]')
+    .slice(0, 2000);
+}
+
 function publicBaseUrl(env: Env, request?: Request): string {
   const configured = String(env.PUBLIC_BASE_URL || DEFAULT_PUBLIC_BASE_URL).trim().replace(/\/$/, '');
   if (configured) return configured;
@@ -68,7 +76,7 @@ async function generateOne(env: Env, dealRecord: Record<string, any>, request?: 
       generate_proposal: 'no_action',
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = safeErrorMessage(error);
     await patchDeal(env, dealId, {
       proposal_status: 'Failed',
       proposal_error: message.slice(0, 5000),
@@ -88,7 +96,7 @@ async function processPending(env: Env, request?: Request): Promise<{ processed:
       processed += 1;
     } catch (error) {
       failed += 1;
-      console.error('Proposal generation failed', deal.id, error);
+      console.error('Proposal generation failed', deal.id, safeErrorMessage(error));
     }
   }
   return { processed, failed };
@@ -114,13 +122,29 @@ function htmlHeaders(): HeadersInit {
 }
 
 async function renderFromToken(env: Env, token: string): Promise<{ snapshot: ProposalSnapshot; html: string } | null> {
-  const snapshot = await snapshotFromToken(env, token);
+  let snapshot: ProposalSnapshot | null;
+  try {
+    snapshot = await snapshotFromToken(env, token);
+  } catch (error) {
+    throw new Error(`SNAPSHOT_LOAD_FAILED: ${safeErrorMessage(error)}`);
+  }
   if (!snapshot) return null;
-  const proposalTemplate = await getProposalTemplate();
-  return {
-    snapshot,
-    html: renderProposal(snapshot, proposalTemplate),
-  };
+
+  let proposalTemplate: string;
+  try {
+    proposalTemplate = await getProposalTemplate();
+  } catch (error) {
+    throw new Error(`TEMPLATE_LOAD_FAILED: ${safeErrorMessage(error)}`);
+  }
+
+  try {
+    return {
+      snapshot,
+      html: renderProposal(snapshot, proposalTemplate),
+    };
+  } catch (error) {
+    throw new Error(`PROPOSAL_RENDER_FAILED: ${safeErrorMessage(error)}`);
+  }
 }
 
 async function handleFetch(request: Request, env: Env): Promise<Response> {
@@ -177,9 +201,23 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
 
 export default {
   fetch(request: Request, env: Env): Promise<Response> {
+    const requestId = crypto.randomUUID();
+    const url = new URL(request.url);
+
     return handleFetch(request, env).catch((error) => {
-      console.error(error);
-      return json({ error: 'Internal server error' }, 500);
+      const details = safeErrorMessage(error);
+      console.error('Worker request failed', {
+        requestId,
+        method: request.method,
+        path: url.pathname,
+        details,
+      });
+
+      return json({
+        error: 'Internal server error',
+        requestId,
+        ...(url.searchParams.get('debug') === '1' ? { details } : {}),
+      }, 500);
     });
   },
   async scheduled(
