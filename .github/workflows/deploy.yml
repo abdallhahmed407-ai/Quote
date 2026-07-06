@@ -65,8 +65,8 @@ jobs:
             preview="$(curl -fsS "https://quote.abdallhahmed407.workers.dev/preview?verify=${GITHUB_SHA}-${attempt}")"
             proposal="$(curl -fsS "${proposal_url}?verify=${GITHUB_SHA}-${attempt}")"
 
-            if printf '%s' "$preview" | grep -q 'ojoor-release" content="html-browser-print-v7-ojoor-legal-details' \
-              && printf '%s' "$proposal" | grep -q 'ojoor-release" content="html-browser-print-v7-ojoor-legal-details' \
+            if printf '%s' "$preview" | grep -q 'ojoor-release" content="html-browser-print-v8-first-party-ojoor' \
+              && printf '%s' "$proposal" | grep -q 'ojoor-release" content="html-browser-print-v8-first-party-ojoor' \
               && printf '%s' "$preview" | grep -q "$expected_date" \
               && printf '%s' "$proposal" | grep -q "$expected_date" \
               && printf '%s' "$preview" | grep -q '1010586885' \
@@ -88,13 +88,13 @@ jobs:
 
           test "$verified" = "1"
           echo "expected_date=$expected_date" >> "$GITHUB_OUTPUT"
-          echo "Verified Riyadh-local date and Ojoor legal details on preview and live proposal: $expected_date"
+          echo "Verified Riyadh-local date and Ojoor first-party details on preview and live proposal: $expected_date"
 
       - name: Record verified production deployment
         run: |
           cat > deployment-status.json <<EOF
           {
-            "release": "html-browser-print-v7-ojoor-legal-details",
+            "release": "html-browser-print-v8-first-party-ojoor",
             "source_commit": "${GITHUB_SHA}",
             "cloudflare_verified": true,
             "live_proposal_verified": true,
