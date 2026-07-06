@@ -1,9 +1,9 @@
 {
-  "release": "html-browser-print-v13-fixed-first-party-values",
-  "source_commit": "40888c6d83114892f442d4032a969715b0913e49",
+  "release": "html-browser-print-v14-align-first-party-values",
+  "source_commit": "1dd8219ae057df19bed2cae892c54c22592f07b1",
   "cloudflare_verified": true,
   "preview_verified": true,
   "proposal_time_zone": "Asia/Riyadh",
   "verified_arabic_date": "٦ يوليو ٢٠٢٦",
-  "verified_at_utc": "2026-07-06T14:25:39Z"
+  "verified_at_utc": "2026-07-06T14:31:24Z"
 }
