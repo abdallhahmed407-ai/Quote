@@ -57,9 +57,8 @@ jobs:
           for attempt in 1 2 3 4 5 6 7 8; do
             preview="$(curl -fsS "https://quote.abdallhahmed407.workers.dev/preview?verify=${GITHUB_SHA}-${attempt}")"
 
-            if printf '%s' "$preview" | grep -q 'ojoor-release" content="html-browser-print-v12-first-party-overlay' \
-              && printf '%s' "$preview" | grep -q 'patchOjoorFirstPartyFields' \
-              && printf '%s' "$preview" | grep -q 'R-IAxZ.*' \
+            if printf '%s' "$preview" | grep -q 'ojoor-release" content="html-browser-print-v13-fixed-first-party-values' \
+              && printf '%s' "$preview" | grep -q 'ojoor-fixed-first-party-field' \
               && printf '%s' "$preview" | grep -q "$expected_date" \
               && printf '%s' "$preview" | grep -q '1010586885' \
               && printf '%s' "$preview" | grep -q '310712172300003' \
@@ -76,13 +75,13 @@ jobs:
 
           test "$verified" = "1"
           echo "expected_date=$expected_date" >> "$GITHUB_OUTPUT"
-          echo "Verified first-party Ojoor overlay values on preview: $expected_date"
+          echo "Verified fixed first-party values on preview: $expected_date"
 
       - name: Record verified production deployment
         run: |
           cat > deployment-status.json <<EOF
           {
-            "release": "html-browser-print-v12-first-party-overlay",
+            "release": "html-browser-print-v13-fixed-first-party-values",
             "source_commit": "${GITHUB_SHA}",
             "cloudflare_verified": true,
             "preview_verified": true,
