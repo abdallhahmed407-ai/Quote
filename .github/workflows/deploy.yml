@@ -54,7 +54,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Verify Riyadh-local date and print button on Cloudflare
+      - name: Verify Riyadh-local date, Ojoor legal details, and print button on Cloudflare
         id: verify
         run: |
           verified=0
@@ -65,10 +65,18 @@ jobs:
             preview="$(curl -fsS "https://quote.abdallhahmed407.workers.dev/preview?verify=${GITHUB_SHA}-${attempt}")"
             proposal="$(curl -fsS "${proposal_url}?verify=${GITHUB_SHA}-${attempt}")"
 
-            if printf '%s' "$preview" | grep -q 'ojoor-release" content="html-browser-print-v6-riyadh-date' \
-              && printf '%s' "$proposal" | grep -q 'ojoor-release" content="html-browser-print-v6-riyadh-date' \
+            if printf '%s' "$preview" | grep -q 'ojoor-release" content="html-browser-print-v7-ojoor-legal-details' \
+              && printf '%s' "$proposal" | grep -q 'ojoor-release" content="html-browser-print-v7-ojoor-legal-details' \
               && printf '%s' "$preview" | grep -q "$expected_date" \
               && printf '%s' "$proposal" | grep -q "$expected_date" \
+              && printf '%s' "$preview" | grep -q '1010586885' \
+              && printf '%s' "$preview" | grep -q '310712172300003' \
+              && printf '%s' "$preview" | grep -q 'مبنى 8730' \
+              && ! printf '%s' "$preview" | grep -q 'مبنى 8758' \
+              && printf '%s' "$proposal" | grep -q '1010586885' \
+              && printf '%s' "$proposal" | grep -q '310712172300003' \
+              && printf '%s' "$proposal" | grep -q 'مبنى 8730' \
+              && ! printf '%s' "$proposal" | grep -q 'مبنى 8758' \
               && printf '%s' "$proposal" | grep -q '>طباعة</button>' \
               && ! printf '%s' "$proposal" | grep -q 'تحميل PDF'; then
               verified=1
@@ -80,13 +88,13 @@ jobs:
 
           test "$verified" = "1"
           echo "expected_date=$expected_date" >> "$GITHUB_OUTPUT"
-          echo "Verified Riyadh-local date on preview and live proposal: $expected_date"
+          echo "Verified Riyadh-local date and Ojoor legal details on preview and live proposal: $expected_date"
 
       - name: Record verified production deployment
         run: |
           cat > deployment-status.json <<EOF
           {
-            "release": "html-browser-print-v6-riyadh-date",
+            "release": "html-browser-print-v7-ojoor-legal-details",
             "source_commit": "${GITHUB_SHA}",
             "cloudflare_verified": true,
             "live_proposal_verified": true,
