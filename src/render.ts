@@ -1,7 +1,7 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'html-browser-print-v9-first-party-cr-vat';
+const RELEASE_MARKER = 'html-browser-print-v10-first-party-visible-fields';
 const PROPOSAL_TIME_ZONE = 'Asia/Riyadh';
 const OJOOR_LEGAL_NAME_AR = 'شركة الرائدة للموارد البشرية — أجور';
 const OJOOR_CR_NUMBER = '1010586885';
@@ -47,7 +47,7 @@ function renumberPages(html: string): string {
 function removeOldProposalActions(html: string): string {
   return html
     .replace(/<div class="proposal-print-actions">[\s\S]*?<\/div>/g, '')
-    .replace(/<script>[\s\S]*?(?:downloadOjoorProposal|printOjoorProposal|patchOjoorFirstPartyDetails)[\s\S]*?<\/script>/g, '');
+    .replace(/<script>[\s\S]*?(?:downloadOjoorProposal|printOjoorProposal)[\s\S]*?<\/script>/g, '');
 }
 
 function injectPrintExperience(html: string): string {
@@ -64,6 +64,23 @@ function injectPrintExperience(html: string): string {
       width: 50% !important;
       margin: 0 !important;
       direction: rtl !important;
+    }
+
+    [data-cid="R-IAxZ"]::after {
+      content: "${OJOOR_CR_NUMBER}" !important;
+    }
+
+    [data-cid="nl1wjI"]::after {
+      content: "${OJOOR_VAT_NUMBER}" !important;
+    }
+
+    [data-cid="R-IAxZ"]::after,
+    [data-cid="nl1wjI"]::after {
+      display: inline !important;
+      color: inherit !important;
+      font: inherit !important;
+      direction: ltr !important;
+      unicode-bidi: plaintext !important;
     }
 
     .proposal-print-actions {
