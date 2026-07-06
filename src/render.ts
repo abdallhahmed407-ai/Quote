@@ -1,7 +1,7 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'html-browser-print-v10-first-party-visible-fields';
+const RELEASE_MARKER = 'html-browser-print-v11-direct-first-party-values';
 const PROPOSAL_TIME_ZONE = 'Asia/Riyadh';
 const OJOOR_LEGAL_NAME_AR = 'شركة الرائدة للموارد البشرية — أجور';
 const OJOOR_CR_NUMBER = '1010586885';
@@ -14,9 +14,19 @@ function replaceAll(source: string, marker: string, value: string): string {
 
 function replaceCidContent(source: string, cid: string, value: string): string {
   const escapedCid = cid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(`(<(?:span|div)[^>]*data-cid="${escapedCid}"[^>]*>)(.*?)(</(?:span|div)>)`, 's');
-  return source.replace(pattern, (_match, opening: string, _content: string, closing: string) =>
+  let replaced = source;
+
+  // The template was exported from a visual builder, so field nodes are not guaranteed
+  // to always be span/div. Match any normal HTML element carrying the CID and replace
+  // the node body directly. This is critical for the first-party CR/VAT fields.
+  const anyElementPattern = new RegExp(
+    `(<([A-Za-z][\\w:-]*)\\b[^>]*\\bdata-cid=["']${escapedCid}["'][^>]*>)([\\s\\S]*?)(<\\/\\2>)`,
+    'g',
+  );
+  replaced = replaced.replace(anyElementPattern, (_match, opening: string, _tag: string, _content: string, closing: string) =>
     `${opening}${value}${closing}`);
+
+  return replaced;
 }
 
 function normalizeOjoorStaticDetails(html: string): string {
@@ -64,23 +74,6 @@ function injectPrintExperience(html: string): string {
       width: 50% !important;
       margin: 0 !important;
       direction: rtl !important;
-    }
-
-    [data-cid="R-IAxZ"]::after {
-      content: "${OJOOR_CR_NUMBER}" !important;
-    }
-
-    [data-cid="nl1wjI"]::after {
-      content: "${OJOOR_VAT_NUMBER}" !important;
-    }
-
-    [data-cid="R-IAxZ"]::after,
-    [data-cid="nl1wjI"]::after {
-      display: inline !important;
-      color: inherit !important;
-      font: inherit !important;
-      direction: ltr !important;
-      unicode-bidi: plaintext !important;
     }
 
     .proposal-print-actions {
