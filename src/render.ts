@@ -1,8 +1,12 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'html-browser-print-v6-riyadh-date';
+const RELEASE_MARKER = 'html-browser-print-v7-ojoor-legal-details';
 const PROPOSAL_TIME_ZONE = 'Asia/Riyadh';
+const OJOOR_LEGAL_NAME_AR = 'شركة الرائدة للموارد البشرية — أجور';
+const OJOOR_CR_NUMBER = '1010586885';
+const OJOOR_VAT_NUMBER = '310712172300003';
+const OJOOR_ADDRESS = 'مبنى 8730، حي العليا، مكتب 309، الرمز البريدي 12214، الدور الثالث';
 
 function replaceAll(source: string, marker: string, value: string): string {
   return source.split(marker).join(value);
@@ -13,6 +17,10 @@ function replaceCidContent(source: string, cid: string, value: string): string {
   const pattern = new RegExp(`(<(?:span|div)[^>]*data-cid="${escapedCid}"[^>]*>)(.*?)(</(?:span|div)>)`, 's');
   return source.replace(pattern, (_match, opening: string, _content: string, closing: string) =>
     `${opening}${value}${closing}`);
+}
+
+function normalizeOjoorStaticDetails(html: string): string {
+  return html.replace(/مبنى\s*8758/g, 'مبنى 8730');
 }
 
 function formatArabicDate(value: unknown): string {
@@ -225,6 +233,10 @@ export function renderProposal(
     '{{CUSTOMER_CR}}': escapeHtml(context.customerCr),
     '{{CUSTOMER_VAT}}': escapeHtml(context.customerVat),
     '{{CUSTOMER_ADDRESS}}': escapeHtml(context.customerAddress),
+    '{{OJOOR_LEGAL_NAME}}': escapeHtml(OJOOR_LEGAL_NAME_AR),
+    '{{OJOOR_CR}}': escapeHtml(OJOOR_CR_NUMBER),
+    '{{OJOOR_VAT}}': escapeHtml(OJOOR_VAT_NUMBER),
+    '{{OJOOR_ADDRESS}}': escapeHtml(OJOOR_ADDRESS),
     '{{CONTACT_NAME}}': escapeHtml(context.contactName),
     '{{OWNER_NAME}}': escapeHtml(context.ownerName),
     '{{CREATED_DATE}}': escapeHtml(context.createdDate),
@@ -237,10 +249,10 @@ export function renderProposal(
   const cidValues: Record<string, string> = {
     '2WqGGa': values['{{CUSTOMER_NAME}}'],
     'x2nAbT': values['{{CREATED_DATE}}'],
-    'jZvbMg': values['{{CUSTOMER_NAME}}'],
-    'bnGZN1': values['{{CUSTOMER_CR}}'],
-    'Gpnfdu': values['{{CUSTOMER_VAT}}'],
-    'VzkAyN': values['{{CUSTOMER_ADDRESS}}'],
+    'jZvbMg': values['{{OJOOR_LEGAL_NAME}}'],
+    'bnGZN1': values['{{OJOOR_CR}}'],
+    'Gpnfdu': values['{{OJOOR_VAT}}'],
+    'VzkAyN': values['{{OJOOR_ADDRESS}}'],
     'kODtr_': values['{{OWNER_NAME}}'],
     'j42ryV': values['{{CREATED_DATE}}'],
     'R-IAxZ': '',
@@ -251,5 +263,6 @@ export function renderProposal(
   for (const [marker, value] of Object.entries(values)) html = replaceAll(html, marker, value);
 
   html = html.replace(/\bOGR-/g, 'OJR-');
+  html = normalizeOjoorStaticDetails(html);
   return injectPrintExperience(renumberPages(html));
 }
