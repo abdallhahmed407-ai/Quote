@@ -1,7 +1,7 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'html-browser-print-v8-first-party-ojoor';
+const RELEASE_MARKER = 'html-browser-print-v9-first-party-cr-vat';
 const PROPOSAL_TIME_ZONE = 'Asia/Riyadh';
 const OJOOR_LEGAL_NAME_AR = 'شركة الرائدة للموارد البشرية — أجور';
 const OJOOR_CR_NUMBER = '1010586885';
@@ -64,20 +64,6 @@ function injectPrintExperience(html: string): string {
       width: 50% !important;
       margin: 0 !important;
       direction: rtl !important;
-    }
-
-    section.page {
-      position: relative !important;
-    }
-
-    .ojoor-legal-value-overlay {
-      z-index: 25;
-      color: #2f3568;
-      font-weight: 500;
-      line-height: 1.4;
-      pointer-events: none;
-      white-space: normal;
-      box-sizing: border-box;
     }
 
     .proposal-print-actions {
@@ -171,89 +157,12 @@ function injectPrintExperience(html: string): string {
     <button class="proposal-print-button" type="button" onclick="printOjoorProposal(this)">طباعة</button>
   </div>
   <script>
-    function patchOjoorFirstPartyDetails() {
-      var targets = [
-        { label: 'السجل التجاري', value: '${OJOOR_CR_NUMBER}', field: 'cr' },
-        { label: 'الرقم الضريبي', value: '${OJOOR_VAT_NUMBER}', field: 'vat' }
-      ];
-      var normalize = function (value) {
-        return String(value || '').replace(/\\s+/g, '').trim();
-      };
-      var textElements = Array.prototype.slice.call(document.querySelectorAll('span, div'))
-        .filter(function (element) { return normalize(element.textContent); });
-      var heading = textElements.find(function (element) {
-        var text = normalize(element.textContent);
-        return text.indexOf('الطرفالأول') !== -1 && text.indexOf('أجور') !== -1;
-      });
-      if (!heading) return;
-
-      var headingRect = heading.getBoundingClientRect();
-      var headingCenter = (headingRect.left + headingRect.right) / 2;
-      var page = heading.closest('section.page') || document.body;
-      var pageRect = page.getBoundingClientRect();
-
-      Array.prototype.slice.call(page.querySelectorAll('.ojoor-legal-value-overlay')).forEach(function (element) {
-        element.remove();
-      });
-
-      targets.forEach(function (target) {
-        var targetLabel = normalize(target.label);
-        var best = null;
-        var bestScore = Infinity;
-
-        textElements.forEach(function (element) {
-          var text = normalize(element.textContent);
-          if (text !== targetLabel && text.indexOf(targetLabel) === -1) return;
-
-          var rect = element.getBoundingClientRect();
-          if (rect.top < headingRect.bottom - 4) return;
-
-          var center = (rect.left + rect.right) / 2;
-          var horizontalScore = Math.abs(center - headingCenter);
-          var verticalScore = Math.abs(rect.top - headingRect.top);
-          var score = (horizontalScore * 2) + verticalScore;
-
-          if (score < bestScore) {
-            best = element;
-            bestScore = score;
-          }
-        });
-
-        if (!best) return;
-        var labelRect = best.getBoundingClientRect();
-        var computedStyle = window.getComputedStyle(best);
-        var overlay = document.createElement('span');
-        overlay.className = 'ojoor-legal-value-overlay';
-        overlay.setAttribute('data-ojoor-field', target.field);
-        overlay.textContent = target.value;
-        overlay.style.position = 'absolute';
-        overlay.style.left = Math.max(0, (labelRect.right - pageRect.left) - 290) + 'px';
-        overlay.style.top = ((labelRect.bottom - pageRect.top) + 12) + 'px';
-        overlay.style.width = '290px';
-        overlay.style.textAlign = 'right';
-        overlay.style.direction = 'ltr';
-        overlay.style.unicodeBidi = 'plaintext';
-        overlay.style.fontFamily = computedStyle.fontFamily;
-        overlay.style.fontSize = computedStyle.fontSize;
-        overlay.style.color = computedStyle.color || '#2f3568';
-        page.appendChild(overlay);
-      });
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', patchOjoorFirstPartyDetails, { once: true });
-    } else {
-      patchOjoorFirstPartyDetails();
-    }
-    window.addEventListener('load', patchOjoorFirstPartyDetails);
-
     async function printOjoorProposal(button) {
       const originalText = button.textContent;
       button.disabled = true;
       button.textContent = 'جاري تجهيز الطباعة...';
 
       try {
-        patchOjoorFirstPartyDetails();
         if (document.fonts && document.fonts.ready) {
           await document.fonts.ready;
         }
@@ -267,7 +176,6 @@ function injectPrintExperience(html: string): string {
 
         await Promise.all(pendingImages);
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        patchOjoorFirstPartyDetails();
         window.print();
       } finally {
         button.disabled = false;
@@ -347,8 +255,8 @@ export function renderProposal(
     'VzkAyN': values['{{CUSTOMER_ADDRESS}}'],
     'kODtr_': values['{{OWNER_NAME}}'],
     'j42ryV': values['{{CREATED_DATE}}'],
-    'R-IAxZ': '',
-    'nl1wjI': '',
+    'R-IAxZ': values['{{OJOOR_CR}}'],
+    'nl1wjI': values['{{OJOOR_VAT}}'],
   };
 
   for (const [cid, value] of Object.entries(cidValues)) html = replaceCidContent(html, cid, value);
