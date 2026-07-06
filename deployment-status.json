@@ -1,9 +1,9 @@
 {
-  "release": "html-browser-print-v6-riyadh-date",
-  "source_commit": "d229c3431e7d42b65d38b437cc9800c0046fa9f4",
+  "release": "html-browser-print-v11-direct-first-party-values",
+  "source_commit": "685b494dd16f9d3069105f03e785b985885e52e1",
   "cloudflare_verified": true,
-  "live_proposal_verified": true,
+  "preview_verified": true,
   "proposal_time_zone": "Asia/Riyadh",
-  "verified_arabic_date": "٣ يوليو ٢٠٢٦",
-  "verified_at_utc": "2026-07-02T23:09:56Z"
+  "verified_arabic_date": "٦ يوليو ٢٠٢٦",
+  "verified_at_utc": "2026-07-06T13:59:31Z"
 }
