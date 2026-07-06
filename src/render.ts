@@ -1,7 +1,7 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'html-browser-print-v13-fixed-first-party-values';
+const RELEASE_MARKER = 'html-browser-print-v14-align-first-party-values';
 const PROPOSAL_TIME_ZONE = 'Asia/Riyadh';
 const OJOOR_LEGAL_NAME_AR = 'شركة الرائدة للموارد البشرية — أجور';
 const OJOOR_CR_NUMBER = '1010586885';
@@ -75,10 +75,10 @@ function injectPrintExperience(html: string): string {
 
     .ojoor-fixed-first-party-field {
       position: absolute;
-      right: 90px;
+      right: 66px;
       z-index: 999;
       display: block;
-      width: 245px;
+      width: 270px;
       color: #2f3568;
       font-weight: 500;
       line-height: 1.4;
@@ -94,7 +94,7 @@ function injectPrintExperience(html: string): string {
     }
 
     .ojoor-fixed-first-party-field[data-field="vat"] {
-      top: 373px;
+      top: 374px;
     }
 
     .proposal-print-actions {
