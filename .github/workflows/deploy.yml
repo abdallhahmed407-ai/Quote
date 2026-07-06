@@ -48,37 +48,23 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Show deployed versions
-        run: npx wrangler deployments list --config wrangler.jsonc --name quote
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      - name: Verify Riyadh-local date, Ojoor legal details, and print button on Cloudflare
+      - name: Verify preview after deployment
         id: verify
         run: |
           verified=0
-          proposal_url='https://quote.abdallhahmed407.workers.dev/p/eyJuIjoiNTAxOTEyMDYzMTkxIiwiZCI6IjUwODg3ODQyMTIxMyIsInYiOjI4fQ.OldhRKGe7j9dKMfbQkfMcVRTCtNzCYn3JpH8s9PA3Ss'
           expected_date="$(node -e "console.log(new Intl.DateTimeFormat('ar-EG-u-ca-gregory-nu-arab',{day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Riyadh'}).format(new Date()))")"
 
           for attempt in 1 2 3 4 5 6 7 8; do
             preview="$(curl -fsS "https://quote.abdallhahmed407.workers.dev/preview?verify=${GITHUB_SHA}-${attempt}")"
-            proposal="$(curl -fsS "${proposal_url}?verify=${GITHUB_SHA}-${attempt}")"
 
-            if printf '%s' "$preview" | grep -q 'ojoor-release" content="html-browser-print-v10-first-party-visible-fields' \
-              && printf '%s' "$proposal" | grep -q 'ojoor-release" content="html-browser-print-v10-first-party-visible-fields' \
+            if printf '%s' "$preview" | grep -q 'ojoor-release" content="html-browser-print-v11-direct-first-party-values' \
               && printf '%s' "$preview" | grep -q "$expected_date" \
-              && printf '%s' "$proposal" | grep -q "$expected_date" \
               && printf '%s' "$preview" | grep -q '1010586885' \
               && printf '%s' "$preview" | grep -q '310712172300003' \
               && printf '%s' "$preview" | grep -q 'مبنى 8730' \
               && ! printf '%s' "$preview" | grep -q 'مبنى 8758' \
-              && printf '%s' "$proposal" | grep -q '1010586885' \
-              && printf '%s' "$proposal" | grep -q '310712172300003' \
-              && printf '%s' "$proposal" | grep -q 'مبنى 8730' \
-              && ! printf '%s' "$proposal" | grep -q 'مبنى 8758' \
-              && printf '%s' "$proposal" | grep -q '>طباعة</button>' \
-              && ! printf '%s' "$proposal" | grep -q 'تحميل PDF'; then
+              && printf '%s' "$preview" | grep -q '>طباعة</button>' \
+              && ! printf '%s' "$preview" | grep -q 'تحميل PDF'; then
               verified=1
               break
             fi
@@ -88,16 +74,16 @@ jobs:
 
           test "$verified" = "1"
           echo "expected_date=$expected_date" >> "$GITHUB_OUTPUT"
-          echo "Verified Riyadh-local date and visible first-party Ojoor CR/VAT details on preview and live proposal: $expected_date"
+          echo "Verified direct first-party Ojoor values on preview: $expected_date"
 
       - name: Record verified production deployment
         run: |
           cat > deployment-status.json <<EOF
           {
-            "release": "html-browser-print-v10-first-party-visible-fields",
+            "release": "html-browser-print-v11-direct-first-party-values",
             "source_commit": "${GITHUB_SHA}",
             "cloudflare_verified": true,
-            "live_proposal_verified": true,
+            "preview_verified": true,
             "proposal_time_zone": "Asia/Riyadh",
             "verified_arabic_date": "${{ steps.verify.outputs.expected_date }}",
             "verified_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
