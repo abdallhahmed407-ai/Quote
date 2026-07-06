@@ -1,7 +1,7 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'html-browser-print-v12-first-party-overlay';
+const RELEASE_MARKER = 'html-browser-print-v13-fixed-first-party-values';
 const PROPOSAL_TIME_ZONE = 'Asia/Riyadh';
 const OJOOR_LEGAL_NAME_AR = 'شركة الرائدة للموارد البشرية — أجور';
 const OJOOR_CR_NUMBER = '1010586885';
@@ -73,11 +73,12 @@ function injectPrintExperience(html: string): string {
       direction: rtl !important;
     }
 
-    .ojoor-first-party-field-value {
+    .ojoor-fixed-first-party-field {
       position: absolute;
-      z-index: 60;
+      right: 90px;
+      z-index: 999;
       display: block;
-      width: 240px;
+      width: 245px;
       color: #2f3568;
       font-weight: 500;
       line-height: 1.4;
@@ -86,6 +87,14 @@ function injectPrintExperience(html: string): string {
       unicode-bidi: plaintext;
       pointer-events: none;
       white-space: nowrap;
+    }
+
+    .ojoor-fixed-first-party-field[data-field="cr"] {
+      top: 319px;
+    }
+
+    .ojoor-fixed-first-party-field[data-field="vat"] {
+      top: 373px;
     }
 
     .proposal-print-actions {
@@ -180,60 +189,38 @@ function injectPrintExperience(html: string): string {
   </div>
   <script>
     function patchOjoorFirstPartyFields() {
-      var values = [
-        { label: 'السجل التجاري', value: '${OJOOR_CR_NUMBER}', key: 'cr' },
-        { label: 'الرقم الضريبي', value: '${OJOOR_VAT_NUMBER}', key: 'vat' }
-      ];
       var normalize = function (text) { return String(text || '').replace(/\\s+/g, '').trim(); };
-      var nodes = Array.prototype.slice.call(document.querySelectorAll('span, div'));
-      var heading = nodes.find(function (node) {
-        var text = normalize(node.textContent);
-        return text.indexOf('الطرفالأول') >= 0 && text.indexOf('أجور') >= 0;
+      var sections = Array.prototype.slice.call(document.querySelectorAll('section.page'));
+      var termsPage = sections.find(function (section) {
+        var text = normalize(section.textContent);
+        return text.indexOf('الشروطوالأحكام') >= 0 && text.indexOf('الطرفالأول') >= 0 && text.indexOf('الطرفالثاني') >= 0;
       });
-      if (!heading) return;
 
-      var page = heading.closest('section.page') || document.body;
-      var pageBox = page.getBoundingClientRect();
-      var headingBox = heading.getBoundingClientRect();
-      var headingCenter = (headingBox.left + headingBox.right) / 2;
+      if (!termsPage) {
+        termsPage = sections.find(function (section) {
+          var text = normalize(section.textContent);
+          return text.indexOf('السجلالتجاري') >= 0 && text.indexOf('الرقمالضريبي') >= 0 && text.indexOf('أجور') >= 0;
+        });
+      }
 
-      Array.prototype.slice.call(page.querySelectorAll('.ojoor-first-party-field-value')).forEach(function (node) {
+      if (!termsPage) return;
+
+      Array.prototype.slice.call(termsPage.querySelectorAll('.ojoor-fixed-first-party-field')).forEach(function (node) {
         node.remove();
       });
 
-      values.forEach(function (item) {
-        var wanted = normalize(item.label);
-        var best = null;
-        var bestScore = Infinity;
+      var cr = document.createElement('span');
+      cr.className = 'ojoor-fixed-first-party-field';
+      cr.setAttribute('data-field', 'cr');
+      cr.textContent = '${OJOOR_CR_NUMBER}';
 
-        nodes.forEach(function (node) {
-          var text = normalize(node.textContent);
-          if (text !== wanted && text.indexOf(wanted) < 0) return;
-          var box = node.getBoundingClientRect();
-          if (box.top <= headingBox.bottom - 2) return;
-          if (box.top > headingBox.bottom + 210) return;
-          var center = (box.left + box.right) / 2;
-          var score = Math.abs(center - headingCenter) * 3 + Math.abs(box.top - headingBox.top);
-          if (score < bestScore) {
-            best = node;
-            bestScore = score;
-          }
-        });
+      var vat = document.createElement('span');
+      vat.className = 'ojoor-fixed-first-party-field';
+      vat.setAttribute('data-field', 'vat');
+      vat.textContent = '${OJOOR_VAT_NUMBER}';
 
-        if (!best) return;
-        var labelBox = best.getBoundingClientRect();
-        var labelStyle = window.getComputedStyle(best);
-        var valueNode = document.createElement('span');
-        valueNode.className = 'ojoor-first-party-field-value';
-        valueNode.textContent = item.value;
-        valueNode.setAttribute('data-ojoor-first-party-field', item.key);
-        valueNode.style.fontFamily = labelStyle.fontFamily;
-        valueNode.style.fontSize = labelStyle.fontSize;
-        valueNode.style.color = labelStyle.color || '#2f3568';
-        valueNode.style.left = Math.max(0, (labelBox.right - pageBox.left) - 240) + 'px';
-        valueNode.style.top = ((labelBox.bottom - pageBox.top) + 8) + 'px';
-        page.appendChild(valueNode);
-      });
+      termsPage.appendChild(cr);
+      termsPage.appendChild(vat);
     }
 
     if (document.readyState === 'loading') {
