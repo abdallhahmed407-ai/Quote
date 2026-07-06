@@ -1,7 +1,7 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext } from './pricing';
 
-const RELEASE_MARKER = 'html-browser-print-v11-direct-first-party-values';
+const RELEASE_MARKER = 'html-browser-print-v12-first-party-overlay';
 const PROPOSAL_TIME_ZONE = 'Asia/Riyadh';
 const OJOOR_LEGAL_NAME_AR = 'شركة الرائدة للموارد البشرية — أجور';
 const OJOOR_CR_NUMBER = '1010586885';
@@ -14,19 +14,12 @@ function replaceAll(source: string, marker: string, value: string): string {
 
 function replaceCidContent(source: string, cid: string, value: string): string {
   const escapedCid = cid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  let replaced = source;
-
-  // The template was exported from a visual builder, so field nodes are not guaranteed
-  // to always be span/div. Match any normal HTML element carrying the CID and replace
-  // the node body directly. This is critical for the first-party CR/VAT fields.
-  const anyElementPattern = new RegExp(
+  const pattern = new RegExp(
     `(<([A-Za-z][\\w:-]*)\\b[^>]*\\bdata-cid=["']${escapedCid}["'][^>]*>)([\\s\\S]*?)(<\\/\\2>)`,
     'g',
   );
-  replaced = replaced.replace(anyElementPattern, (_match, opening: string, _tag: string, _content: string, closing: string) =>
+  return source.replace(pattern, (_match, opening: string, _tag: string, _content: string, closing: string) =>
     `${opening}${value}${closing}`);
-
-  return replaced;
 }
 
 function normalizeOjoorStaticDetails(html: string): string {
@@ -57,12 +50,16 @@ function renumberPages(html: string): string {
 function removeOldProposalActions(html: string): string {
   return html
     .replace(/<div class="proposal-print-actions">[\s\S]*?<\/div>/g, '')
-    .replace(/<script>[\s\S]*?(?:downloadOjoorProposal|printOjoorProposal)[\s\S]*?<\/script>/g, '');
+    .replace(/<script>[\s\S]*?(?:downloadOjoorProposal|printOjoorProposal|patchOjoorFirstPartyFields)[\s\S]*?<\/script>/g, '');
 }
 
 function injectPrintExperience(html: string): string {
   const style = `<meta name="ojoor-release" content="${RELEASE_MARKER}">
   <style>
+    section.page {
+      position: relative !important;
+    }
+
     .pricing-bottom-totals-only {
       display: flex !important;
       direction: ltr !important;
@@ -74,6 +71,21 @@ function injectPrintExperience(html: string): string {
       width: 50% !important;
       margin: 0 !important;
       direction: rtl !important;
+    }
+
+    .ojoor-first-party-field-value {
+      position: absolute;
+      z-index: 60;
+      display: block;
+      width: 240px;
+      color: #2f3568;
+      font-weight: 500;
+      line-height: 1.4;
+      text-align: right;
+      direction: ltr;
+      unicode-bidi: plaintext;
+      pointer-events: none;
+      white-space: nowrap;
     }
 
     .proposal-print-actions {
@@ -167,12 +179,78 @@ function injectPrintExperience(html: string): string {
     <button class="proposal-print-button" type="button" onclick="printOjoorProposal(this)">طباعة</button>
   </div>
   <script>
+    function patchOjoorFirstPartyFields() {
+      var values = [
+        { label: 'السجل التجاري', value: '${OJOOR_CR_NUMBER}', key: 'cr' },
+        { label: 'الرقم الضريبي', value: '${OJOOR_VAT_NUMBER}', key: 'vat' }
+      ];
+      var normalize = function (text) { return String(text || '').replace(/\\s+/g, '').trim(); };
+      var nodes = Array.prototype.slice.call(document.querySelectorAll('span, div'));
+      var heading = nodes.find(function (node) {
+        var text = normalize(node.textContent);
+        return text.indexOf('الطرفالأول') >= 0 && text.indexOf('أجور') >= 0;
+      });
+      if (!heading) return;
+
+      var page = heading.closest('section.page') || document.body;
+      var pageBox = page.getBoundingClientRect();
+      var headingBox = heading.getBoundingClientRect();
+      var headingCenter = (headingBox.left + headingBox.right) / 2;
+
+      Array.prototype.slice.call(page.querySelectorAll('.ojoor-first-party-field-value')).forEach(function (node) {
+        node.remove();
+      });
+
+      values.forEach(function (item) {
+        var wanted = normalize(item.label);
+        var best = null;
+        var bestScore = Infinity;
+
+        nodes.forEach(function (node) {
+          var text = normalize(node.textContent);
+          if (text !== wanted && text.indexOf(wanted) < 0) return;
+          var box = node.getBoundingClientRect();
+          if (box.top <= headingBox.bottom - 2) return;
+          if (box.top > headingBox.bottom + 210) return;
+          var center = (box.left + box.right) / 2;
+          var score = Math.abs(center - headingCenter) * 3 + Math.abs(box.top - headingBox.top);
+          if (score < bestScore) {
+            best = node;
+            bestScore = score;
+          }
+        });
+
+        if (!best) return;
+        var labelBox = best.getBoundingClientRect();
+        var labelStyle = window.getComputedStyle(best);
+        var valueNode = document.createElement('span');
+        valueNode.className = 'ojoor-first-party-field-value';
+        valueNode.textContent = item.value;
+        valueNode.setAttribute('data-ojoor-first-party-field', item.key);
+        valueNode.style.fontFamily = labelStyle.fontFamily;
+        valueNode.style.fontSize = labelStyle.fontSize;
+        valueNode.style.color = labelStyle.color || '#2f3568';
+        valueNode.style.left = Math.max(0, (labelBox.right - pageBox.left) - 240) + 'px';
+        valueNode.style.top = ((labelBox.bottom - pageBox.top) + 8) + 'px';
+        page.appendChild(valueNode);
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', patchOjoorFirstPartyFields, { once: true });
+    } else {
+      patchOjoorFirstPartyFields();
+    }
+    window.addEventListener('load', patchOjoorFirstPartyFields);
+    window.addEventListener('resize', patchOjoorFirstPartyFields);
+
     async function printOjoorProposal(button) {
       const originalText = button.textContent;
       button.disabled = true;
       button.textContent = 'جاري تجهيز الطباعة...';
 
       try {
+        patchOjoorFirstPartyFields();
         if (document.fonts && document.fonts.ready) {
           await document.fonts.ready;
         }
@@ -186,6 +264,7 @@ function injectPrintExperience(html: string): string {
 
         await Promise.all(pendingImages);
         await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        patchOjoorFirstPartyFields();
         window.print();
       } finally {
         button.disabled = false;
@@ -265,8 +344,8 @@ export function renderProposal(
     'VzkAyN': values['{{CUSTOMER_ADDRESS}}'],
     'kODtr_': values['{{OWNER_NAME}}'],
     'j42ryV': values['{{CREATED_DATE}}'],
-    'R-IAxZ': values['{{OJOOR_CR}}'],
-    'nl1wjI': values['{{OJOOR_VAT}}'],
+    'R-IAxZ': '',
+    'nl1wjI': '',
   };
 
   for (const [cid, value] of Object.entries(cidValues)) html = replaceCidContent(html, cid, value);
