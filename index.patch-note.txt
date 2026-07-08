@@ -1,1 +1,0 @@
-Add 'proposal_language' to DEAL_PROPERTIES in src/hubspot.ts.
