@@ -13,6 +13,11 @@
   },
   "rules": [
     {
+      "type": "Text",
+      "globs": ["**/*.html"],
+      "fallthrough": true
+    },
+    {
       "type": "Data",
       "globs": ["**/*.bin"],
       "fallthrough": true
