@@ -13,6 +13,7 @@ const DEAL_PROPERTIES = [
   'legal_name_arabic',
   'legal_name_english',
   'proposal_expiration_date',
+  'proposal_language',
   'generate_proposal',
   'proposal_status',
   'proposal_url',
@@ -134,11 +135,7 @@ function isBlank(value: unknown): boolean {
   return value === undefined || value === null || String(value).trim() === '';
 }
 
-function validateRequiredFields(
-  deal: JsonObject,
-  owner: JsonObject,
-  lineItems: JsonObject[],
-): void {
+function validateRequiredFields(deal: JsonObject, owner: JsonObject, lineItems: JsonObject[]): void {
   const ownerName = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim();
 
   if (isBlank(deal.legal_name_arabic)) throw new Error('Please fill Legal Name (Arabic).');
@@ -186,8 +183,7 @@ export async function buildSnapshot(env: Env, dealId: string, version: number): 
   for (const item of lineItems) {
     const quantity = Math.max(number(item.quantity), 1);
     const gross = number(item.hs_pre_discount_amount) || number(item.price) * quantity;
-    const itemDiscount = number(item.hs_total_discount || item.discount)
-      || gross * (number(item.hs_discount_percentage) / 100);
+    const itemDiscount = number(item.hs_total_discount || item.discount) || gross * (number(item.hs_discount_percentage) / 100);
     const net = number(item.amount) || Math.max(gross - itemDiscount, 0);
     subtotal += net;
     discount += itemDiscount;
