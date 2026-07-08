@@ -13,6 +13,18 @@ function replaceAll(source: string, marker: string, value: string): string {
   return source.split(marker).join(value);
 }
 
+function replaceCidContent(source: string, cid: string, value: string): string {
+  const escapedCid = cid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`(<([A-Za-z][\\w:-]*)\\b[^>]*\\bdata-cid=["']${escapedCid}["'][^>]*>)([\\s\\S]*?)(<\\/\\2>)`, 'g');
+  return source.replace(pattern, (_match, opening: string, _tag: string, _content: string, closing: string) => `${opening}${value}${closing}`);
+}
+
+function replaceCidOuter(source: string, cid: string, value: string): string {
+  const escapedCid = cid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`<([A-Za-z][\\w:-]*)\\b[^>]*\\bdata-cid=["']${escapedCid}["'][^>]*>[\\s\\S]*?<\\/\\1>`, 'g');
+  return source.replace(pattern, value);
+}
+
 function normalizeProposalLanguage(value: unknown): ProposalLanguage {
   const normalized = String(value || '').trim().toLowerCase();
   if (['english', 'en', 'eng', 'إنجليزي', 'انجليزي'].includes(normalized)) return 'en';
@@ -31,6 +43,13 @@ function formatProposalDate(value: unknown, language: ProposalLanguage): string 
 
 function joinAddress(parts: unknown[], separator: string): string {
   return parts.map((part) => String(part || '').trim()).filter(Boolean).join(separator);
+}
+
+function injectDynamicStyles(html: string): string {
+  const style = `<style id="ojoor-dynamic-hubspot-styles">
+    .price-box{font-family:Cairo,Arial,Tahoma,sans-serif;color:#172b73;font-size:12px;line-height:1.45;width:100%;direction:inherit}.price-box.rtl{direction:rtl;text-align:right}.price-box.ltr{direction:ltr;text-align:left}.price-meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:0 0 22px}.price-meta div{background:#f4f1fb;border:1px solid #ded8ee;border-radius:10px;padding:13px 16px}.price-meta b{display:block;color:#7b5ea7;margin-bottom:4px;font-size:12px}.price-meta span{direction:ltr;unicode-bidi:plaintext;color:#172b73}.price-table{width:100%;border-collapse:collapse;font-size:12px}.price-table th{background:#1f347f;color:#fff;padding:11px 13px;text-align:inherit;font-weight:700}.price-table td{border-bottom:1px solid #e1ddec;padding:11px 13px;vertical-align:top}.price-table tr:nth-child(even) td{background:#f6f3fb}.price-table small{display:block;color:#666;font-size:10px;margin-top:3px}.price-totals{width:310px;margin-top:22px;margin-inline-start:auto;border:1px solid #ded8ee;border-radius:10px;overflow:hidden;font-size:12px}.price-totals div{display:flex;justify-content:space-between;gap:12px;padding:10px 13px;border-bottom:1px solid #eee}.price-totals .grand{background:#1f347f;color:#fff;font-weight:800}.price-box.rtl .price-totals{margin-right:0;margin-left:auto}.price-box.ltr .price-totals{margin-left:auto;margin-right:0}.sig-line-row .sl-dots,.pf .ef,.pf .pf-value,.cover-card .cc-value,.cover-card .ef-light{white-space:normal;overflow-wrap:anywhere}.cover-card .cc-value,.cover-card .ef-light{font-size:clamp(20px,2.1vw,32px);line-height:1.05}.sigs-row .sl-dots{font-weight:700;color:#26324c}.party-card .pf-value,.party-card .ef{font-weight:700;color:#26324c}.inner-content{page-break-inside:avoid}.page{page-break-after:always;break-after:page;overflow:hidden}.page:last-of-type{page-break-after:auto;break-after:auto}@media print{@page{size:A4;margin:0}html,body{margin:0!important;background:#fff!important}.page{margin:0!important;box-shadow:none!important}}
+  </style>`;
+  return html.includes('</head>') ? html.replace('</head>', `${style}</head>`) : `${style}${html}`;
 }
 
 export function renderProposal(snapshot: ProposalSnapshot, template: string, _downloadPath = ''): string {
@@ -77,7 +96,33 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string, _do
     '{{EXTRA_PRICING_PAGES}}': pricing.extraPages,
   };
 
-  let html = template;
+  let html = injectDynamicStyles(template);
+
+  const cidValues: Record<string, string> = language === 'en'
+    ? {
+      QX2Xfb: values['{{CUSTOMER_NAME}}'], HfpEDS: values['{{CUSTOMER_NAME}}'],
+      K7Bu6y: values['{{CREATED_DATE}}'], UqDNGq: values['{{CREATED_DATE}}'],
+      BA5R34: values['{{CUSTOMER_NAME}}'], '-86fZo': values['{{CUSTOMER_NAME}}'],
+      ogxdcs: values['{{CUSTOMER_CR}}'], gTQRu5: values['{{CUSTOMER_CR}}'],
+      sJOAK8: values['{{CUSTOMER_VAT}}'], ivvYPk: values['{{CUSTOMER_VAT}}'],
+      '2RObk5': values['{{CUSTOMER_ADDRESS}}'], Q2jzR7: values['{{CUSTOMER_ADDRESS}}'],
+      ynPTB: values['{{OWNER_NAME}}'], 'ynPTB-': values['{{OWNER_NAME}}'],
+      ZTFgC: values['{{CREATED_DATE}}'], 'ZTFgC-': values['{{CREATED_DATE}}'],
+      iRqSBF: '', Qcvb8K: '', Au8d6g: '', LrQYZ5: '',
+    }
+    : {
+      MzWWQN: values['{{CUSTOMER_NAME}}'], '2WqGGa': values['{{CUSTOMER_NAME}}'],
+      qJ3WHc: values['{{CREATED_DATE}}'], x2nAbT: values['{{CREATED_DATE}}'],
+      xB8K53: values['{{CUSTOMER_NAME}}'], jZvbMg: values['{{CUSTOMER_NAME}}'],
+      mlVSEo: values['{{CUSTOMER_CR}}'], bnGZN1: values['{{CUSTOMER_CR}}'],
+      teEWVO: values['{{CUSTOMER_VAT}}'], Gpnfdu: values['{{CUSTOMER_VAT}}'],
+      NpEsFj: values['{{CUSTOMER_ADDRESS}}'], VzkAyN: values['{{CUSTOMER_ADDRESS}}'],
+      kODtr_: values['{{OWNER_NAME}}'], j42ryV: values['{{CREATED_DATE}}'],
+      '6xAF3a': '', 'R-IAxZ': '', nl1wjI: '', Ie8gsS: '',
+    };
+
+  for (const [cid, value] of Object.entries(cidValues)) html = replaceCidContent(html, cid, value);
+  html = replaceCidOuter(html, language === 'en' ? 'DE4VvI' : 'a24TUK', `<div class="empty-body dynamic-pricing-body">${pricing.firstBody}</div>`);
   for (const [marker, value] of Object.entries(values)) html = replaceAll(html, marker, value);
-  return html.replace(/\bOGR-/g, 'OJR-');
+  return html.replace(/\bOGR-/g, 'OJR-').replace(/مبنى\s*8758/g, 'مبنى 8730').replace(/Building\s+No\.\s*8758/gi, 'Building No. 8730');
 }
