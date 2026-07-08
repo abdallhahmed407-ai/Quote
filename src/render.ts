@@ -47,9 +47,20 @@ function joinAddress(parts: unknown[], separator: string): string {
 
 function injectDynamicStyles(html: string): string {
   const style = `<style id="ojoor-dynamic-hubspot-styles">
-    .price-box{font-family:Cairo,Arial,Tahoma,sans-serif;color:#172b73;font-size:12px;line-height:1.45;width:100%;direction:inherit}.price-box.rtl{direction:rtl;text-align:right}.price-box.ltr{direction:ltr;text-align:left}.price-meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:0 0 22px}.price-meta div{background:#f4f1fb;border:1px solid #ded8ee;border-radius:10px;padding:13px 16px}.price-meta b{display:block;color:#7b5ea7;margin-bottom:4px;font-size:12px}.price-meta span{direction:ltr;unicode-bidi:plaintext;color:#172b73}.price-table{width:100%;border-collapse:collapse;font-size:12px}.price-table th{background:#1f347f;color:#fff;padding:11px 13px;text-align:inherit;font-weight:700}.price-table td{border-bottom:1px solid #e1ddec;padding:11px 13px;vertical-align:top}.price-table tr:nth-child(even) td{background:#f6f3fb}.price-table small{display:block;color:#666;font-size:10px;margin-top:3px}.price-totals{width:310px;margin-top:22px;margin-inline-start:auto;border:1px solid #ded8ee;border-radius:10px;overflow:hidden;font-size:12px}.price-totals div{display:flex;justify-content:space-between;gap:12px;padding:10px 13px;border-bottom:1px solid #eee}.price-totals .grand{background:#1f347f;color:#fff;font-weight:800}.price-box.rtl .price-totals{margin-right:0;margin-left:auto}.price-box.ltr .price-totals{margin-left:auto;margin-right:0}.sig-line-row .sl-dots,.pf .ef,.pf .pf-value,.cover-card .cc-value,.cover-card .ef-light{white-space:normal;overflow-wrap:anywhere}.cover-card .cc-value,.cover-card .ef-light{font-size:clamp(20px,2.1vw,32px);line-height:1.05}.sigs-row .sl-dots{font-weight:700;color:#26324c}.party-card .pf-value,.party-card .ef{font-weight:700;color:#26324c}.inner-content{page-break-inside:avoid}.page{page-break-after:always;break-after:page;overflow:hidden}.page:last-of-type{page-break-after:auto;break-after:auto}@media print{@page{size:A4;margin:0}html,body{margin:0!important;background:#fff!important}.page{margin:0!important;box-shadow:none!important}}
+    .page-num{font-size:10px;color:#9999BB;font-weight:600;direction:ltr;unicode-bidi:isolate;min-width:64px;text-align:center;display:inline-block}.price-box{font-family:Cairo,Arial,Tahoma,sans-serif;color:#172b73;font-size:12px;line-height:1.45;width:100%;direction:inherit}.price-box.rtl{direction:rtl;text-align:right}.price-box.ltr{direction:ltr;text-align:left}.price-meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:0 0 22px}.price-meta div{background:#f4f1fb;border:1px solid #ded8ee;border-radius:10px;padding:13px 16px}.price-meta b{display:block;color:#7b5ea7;margin-bottom:4px;font-size:12px}.price-meta span{direction:ltr;unicode-bidi:plaintext;color:#172b73}.price-table{width:100%;border-collapse:collapse;font-size:12px}.price-table th{background:#1f347f;color:#fff;padding:11px 13px;text-align:inherit;font-weight:700}.price-table td{border-bottom:1px solid #e1ddec;padding:11px 13px;vertical-align:top}.price-table tr:nth-child(even) td{background:#f6f3fb}.price-table small{display:block;color:#666;font-size:10px;margin-top:3px}.price-totals{width:310px;margin-top:22px;margin-inline-start:auto;border:1px solid #ded8ee;border-radius:10px;overflow:hidden;font-size:12px}.price-totals div{display:flex;justify-content:space-between;gap:12px;padding:10px 13px;border-bottom:1px solid #eee}.price-totals .grand{background:#1f347f;color:#fff;font-weight:800}.price-box.rtl .price-totals{margin-right:0;margin-left:auto}.price-box.ltr .price-totals{margin-left:auto;margin-right:0}.sig-line-row .sl-dots,.pf .ef,.pf .pf-value,.cover-card .cc-value,.cover-card .ef-light{white-space:normal;overflow-wrap:anywhere}.cover-card .cc-value,.cover-card .ef-light{font-size:clamp(20px,2.1vw,32px);line-height:1.05}.sigs-row .sl-dots{font-weight:700;color:#26324c}.party-card .pf-value,.party-card .ef{font-weight:700;color:#26324c}.inner-content{page-break-inside:avoid}.page{page-break-after:always;break-after:page;overflow:hidden}.page:last-of-type{page-break-after:auto;break-after:auto}@media print{@page{size:A4;margin:0}html,body{margin:0!important;background:#fff!important}.page{margin:0!important;box-shadow:none!important}}
   </style>`;
   return html.includes('</head>') ? html.replace('</head>', `${style}</head>`) : `${style}${html}`;
+}
+
+function injectPageNumbers(html: string): string {
+  if (html.includes('class="page-num"') || html.includes("class='page-num'")) return html;
+  const sectionCount = (html.match(/<section class="page(?:\s|")/g) || []).length || (html.match(/<section\b/g) || []).length;
+  if (!sectionCount) return html;
+  let current = 2;
+  return html.replace(
+    /(<footer class="inner-footer"[^>]*>\s*<span[^>]*>[\s\S]*?<\/span>)([\s\S]*?)(<span[^>]*>\s*ojoor\.net\s*<\/span>\s*<\/footer>)/g,
+    (_match, first: string, middle: string, last: string) => `${first}${middle}<span class="page-num">${current++} / ${sectionCount}</span>${middle}${last}`,
+  );
 }
 
 export function renderProposal(snapshot: ProposalSnapshot, template: string, _downloadPath = ''): string {
@@ -96,7 +107,7 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string, _do
     '{{EXTRA_PRICING_PAGES}}': pricing.extraPages,
   };
 
-  let html = injectDynamicStyles(template);
+  let html = injectPageNumbers(injectDynamicStyles(template));
 
   const cidValues: Record<string, string> = language === 'en'
     ? {
