@@ -138,8 +138,9 @@ function isBlank(value: unknown): boolean {
 function validateRequiredFields(deal: JsonObject, owner: JsonObject, lineItems: JsonObject[]): void {
   const ownerName = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim();
 
-  if (isBlank(deal.legal_name_arabic)) throw new Error('Please fill Legal Name (Arabic).');
+  if (isBlank(deal.legal_name_arabic)) throw new Error('Please fill Legal Name.');
   if (isBlank(deal.proposal_expiration_date)) throw new Error('Please fill Proposal Expiration Date.');
+  if (isBlank(deal.proposal_language)) throw new Error('Please select Proposal Language.');
   if (isBlank(deal.hubspot_owner_id) || isBlank(ownerName)) throw new Error('Please assign Deal Owner.');
   if (lineItems.length === 0) throw new Error('Please add Line Item.');
 
@@ -250,7 +251,7 @@ export async function createSnapshotNote(env: Env, snapshot: ProposalSnapshot): 
 export async function readSnapshotNote(env: Env, noteId: string): Promise<ProposalSnapshot> {
   const note = await request<JsonObject>(env, `/crm/v3/objects/notes/${noteId}?properties=hs_note_body`);
   const body = String(note.properties?.hs_note_body || '');
-  const match = body.match(/OJOOR_SNAPSHOT_V1:([A-Za-z0-9_-]+)/i);
-  if (!match) throw new Error('Proposal snapshot was not found in HubSpot.');
+  const match = body.match(/OJOOR_SNAPSHOT_V1:([A-Za-z0-9_-]+)/);
+  if (!match) throw new Error('Snapshot not found.');
   return decodeSnapshot(match[1]);
 }
