@@ -21,7 +21,6 @@ async function fetchTemplate(selected: Lang): Promise<string> {
       accept: 'text/html;charset=utf-8,text/plain,*/*',
       'user-agent': 'ojoor-proposal-worker',
     },
-    cf: { cacheTtl: 300, cacheEverything: true },
   });
   if (!response.ok) throw new Error(`Template fetch failed: ${response.status} ${url}`);
   return response.text();
