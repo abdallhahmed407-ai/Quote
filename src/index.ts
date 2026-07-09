@@ -5,6 +5,7 @@ import { createPublicToken, verifyPublicToken } from './security';
 import { getProposalTemplate } from './template';
 
 const DEFAULT_PUBLIC_BASE_URL = 'https://quote.abdallhahmed407.workers.dev';
+const RENDERER_VERSION = 'html-template-cdn-runtime-v3';
 type ProposalLanguage = 'ar' | 'en';
 
 function json(data: unknown, status = 200): Response {
@@ -118,7 +119,13 @@ async function snapshotFromToken(env: Env, token: string): Promise<ProposalSnaps
 }
 
 function htmlHeaders(): HeadersInit {
-  return { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'private, no-store', 'x-robots-tag': 'noindex, nofollow, noarchive', 'referrer-policy': 'no-referrer', 'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; base-uri 'none'; frame-ancestors 'none'" };
+  return {
+    'content-type': 'text/html; charset=utf-8',
+    'cache-control': 'private, no-store',
+    'x-robots-tag': 'noindex, nofollow, noarchive',
+    'referrer-policy': 'no-referrer',
+    'content-security-policy': "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; img-src data: https:; font-src data: https://fonts.gstatic.com; connect-src https:; base-uri 'none'; frame-ancestors 'none'",
+  };
 }
 
 async function renderSnapshot(snapshot: ProposalSnapshot, downloadPath = '/preview/pdf?download=1'): Promise<{ snapshot: ProposalSnapshot; html: string }> {
@@ -151,7 +158,13 @@ async function handleFetch(request: Request, env: Env): Promise<Response> {
     const root = publicBaseUrl(env, request);
     const hubspotToken = Boolean(env.HUBSPOT_ACCESS_TOKEN);
     const signingSecret = Boolean(env.PROPOSAL_SIGNING_SECRET && env.PROPOSAL_SIGNING_SECRET.length >= 32);
-    return json({ ok: true, service: 'Ojoor Proposal Generator', configured: hubspotToken && signingSecret, checks: { hubspotToken, signingSecret, adminKey: Boolean(env.ADMIN_KEY) }, publicBaseUrl: root, renderer: 'exact-image-overlay-template', previewUrl: `${root}/preview`, previewArabicUrl: `${root}/preview?lang=ar`, previewEnglishUrl: `${root}/preview?lang=en`, previewPdfUrl: `${root}/preview/pdf`, time: new Date().toISOString() });
+    return json({ ok: true, service: 'Ojoor Proposal Generator', configured: hubspotToken && signingSecret, checks: { hubspotToken, signingSecret, adminKey: Boolean(env.ADMIN_KEY) }, publicBaseUrl: root, renderer: RENDERER_VERSION, previewUrl: `${root}/preview`, previewArabicUrl: `${root}/preview?lang=ar`, previewEnglishUrl: `${root}/preview?lang=en`, templateCheckUrl: `${root}/template-check?lang=en`, previewPdfUrl: `${root}/preview/pdf`, time: new Date().toISOString() });
+  }
+  if (url.pathname === '/template-check') {
+    const startedAt = Date.now();
+    const language = normalizeProposalLanguage(url.searchParams.get('lang'));
+    const template = await getProposalTemplate(language);
+    return json({ ok: true, language, renderer: RENDERER_VERSION, bytes: new TextEncoder().encode(template).byteLength, chars: template.length, ms: Date.now() - startedAt, hasHtml: template.includes('<html'), sections: (template.match(/<section\b/g) || []).length, first100: template.slice(0, 100) });
   }
   if (url.pathname === '/preview' || url.pathname === '/preview/pdf') {
     const shouldDownload = url.searchParams.has('download');
