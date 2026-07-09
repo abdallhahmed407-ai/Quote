@@ -47,13 +47,23 @@ function joinAddress(parts: unknown[], separator: string): string {
 
 function injectDynamicStyles(html: string): string {
   const style = `<style id="ojoor-dynamic-hubspot-styles">
+    html,body,.page,.page *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+    .print-toolbar{position:fixed;top:18px;right:18px;z-index:999999;display:flex;align-items:center;gap:8px;direction:ltr}.print-toolbar[dir="rtl"]{right:auto;left:18px;direction:rtl}.print-button{appearance:none;border:0;border-radius:999px;background:#1f347f;color:#fff;box-shadow:0 10px 30px rgba(31,52,127,.22);font-family:Cairo,Arial,Tahoma,sans-serif;font-size:14px;font-weight:800;line-height:1;padding:13px 22px;cursor:pointer}.print-button:hover{filter:brightness(1.07)}.print-button:active{transform:translateY(1px)}
     .page-num{font-size:10px;color:#9999BB;font-weight:600;direction:ltr;unicode-bidi:isolate;min-width:64px;text-align:center;display:inline-block}
     .dynamic-pricing-body{display:block!important;align-items:initial!important;justify-content:initial!important;text-align:initial!important;padding-top:0!important;margin-top:0!important;min-height:auto!important;height:auto!important;background:transparent!important;transform:translateY(15px)!important;transform-origin:top center!important}.dynamic-pricing-body .price-box{margin-top:0!important}
     .price-box{font-family:Cairo,Arial,Tahoma,sans-serif;color:#172b73;font-size:12px;line-height:1.45;width:100%;direction:inherit}.price-box.rtl{direction:rtl;text-align:right}.price-box.ltr{direction:ltr;text-align:left}.price-meta{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:0 0 22px}.price-meta div{background:#f4f1fb;border:1px solid #ded8ee;border-radius:10px;padding:13px 16px}.price-meta b{display:block;color:#7b5ea7;margin-bottom:4px;font-size:12px}.price-meta span{direction:ltr;unicode-bidi:plaintext;color:#172b73}.price-table{width:100%;border-collapse:collapse;font-size:12px}.price-table th{background:#1f347f;color:#fff;padding:11px 13px;text-align:inherit;font-weight:700}.price-table td{border-bottom:1px solid #e1ddec;padding:11px 13px;vertical-align:top}.price-table tr:nth-child(even) td{background:#f6f3fb}.price-table small{display:block;color:#666;font-size:10px;margin-top:3px}.price-totals{width:310px;margin-top:22px;margin-inline-start:auto;border:1px solid #ded8ee;border-radius:10px;overflow:hidden;font-size:12px}.price-totals div{display:flex;justify-content:space-between;gap:12px;padding:10px 13px;border-bottom:1px solid #eee}.price-totals .grand{background:#1f347f;color:#fff;font-weight:800}.price-box.rtl .price-totals{margin-right:0;margin-left:auto}.price-box.ltr .price-totals{margin-left:auto;margin-right:0}
     .sig-line-row .sl-dots,.pf .ef,.pf .pf-value,.cover-card .cc-value,.cover-card .ef-light{white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important}.cover-card .cc-value,.cover-card .ef-light,[data-cid="QX2Xfb"],[data-cid="HfpEDS"],[data-cid="MzWWQN"],[data-cid="2WqGGa"]{font-size:18px!important;line-height:1.08!important;max-height:44px!important;overflow:hidden!important;text-align:center!important;display:flex!important;align-items:center!important;justify-content:center!important;padding-inline:8px!important}.cover-card [data-cid="K7Bu6y"],.cover-card [data-cid="UqDNGq"],[data-cid="qJ3WHc"],[data-cid="x2nAbT"]{font-size:18px!important;line-height:1.08!important;text-align:center!important}.sigs-row .sl-dots{font-weight:700;color:#26324c;line-height:1.15}.party-card .pf-value,.party-card .ef{font-weight:700;color:#26324c;line-height:1.2}.party-card .pf-value{min-height:22px}.party-card .pf-value .ef{display:inline!important}.inner-content{page-break-inside:avoid}.page{page-break-after:always;break-after:page;overflow:hidden}.page:last-of-type{page-break-after:auto;break-after:auto}html[lang="en"] .sigs-row .sl-dots{transform:translateY(-17px)}
-    @media print{@page{size:A4;margin:0}html,body{margin:0!important;background:#fff!important}.page{margin:0!important;box-shadow:none!important}}
+    @media print{@page{size:A4;margin:0}html,body{margin:0!important;background:#fff!important}.page{margin:0!important;box-shadow:none!important}.print-toolbar{display:none!important}html,body,.page,.page *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}}
   </style>`;
   return html.includes('</head>') ? html.replace('</head>', `${style}</head>`) : `${style}${html}`;
+}
+
+function injectPrintButton(html: string, language: ProposalLanguage): string {
+  if (html.includes('class="print-toolbar"') || html.includes("class='print-toolbar'")) return html;
+  const label = language === 'en' ? 'Print' : 'طباعة';
+  const dir = language === 'en' ? 'ltr' : 'rtl';
+  const button = `<div class="print-toolbar" dir="${dir}"><button type="button" class="print-button" onclick="window.print()" aria-label="${label}">${label}</button></div>`;
+  return html.replace(/(<body\b[^>]*>)/i, `$1${button}`);
 }
 
 function injectPageNumbers(html: string): string {
@@ -109,7 +119,7 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string, _do
     '{{EXTRA_PRICING_PAGES}}': pricing.extraPages,
   };
 
-  let html = injectPageNumbers(injectDynamicStyles(template));
+  let html = injectPrintButton(injectPageNumbers(injectDynamicStyles(template)), language);
 
   const cidValues: Record<string, string> = language === 'en'
     ? {
