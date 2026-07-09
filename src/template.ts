@@ -1,7 +1,7 @@
 type Lang = 'ar' | 'en';
 
 const TEMPLATE_VERSION = '2026-07-09-b2e2941';
-const TEMPLATE_BASE_URL = 'https://raw.githubusercontent.com/abdallhahmed407-ai/Quote/main';
+const TEMPLATE_BASE_URL = 'https://cdn.jsdelivr.net/gh/abdallhahmed407-ai/Quote@main';
 const TEMPLATE_PATHS: Record<Lang, string> = {
   ar: 'ojoor_proposal%20(6).html',
   en: 'ojoor_proposal_english%20(2).html',
@@ -23,7 +23,9 @@ async function fetchTemplate(selected: Lang): Promise<string> {
     },
   });
   if (!response.ok) throw new Error(`Template fetch failed: ${response.status} ${url}`);
-  return response.text();
+  const template = await response.text();
+  if (!template.includes('<html')) throw new Error(`Template response is not HTML: ${url}`);
+  return template;
 }
 
 export function getProposalTemplate(language?: unknown): Promise<string> {
