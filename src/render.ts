@@ -74,9 +74,7 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string, _do
   const owner = snapshot.owner || {};
   const language = normalizeProposalLanguage(deal.proposal_language);
 
-  const customerName = language === 'en'
-    ? deal.legal_name_english || company.name || deal.legal_name_arabic || deal.dealname || ''
-    : deal.legal_name_arabic || company.name || deal.legal_name_english || deal.dealname || '';
+  const customerName = deal.legal_name_arabic || company.name || deal.legal_name_english || deal.dealname || '';
   const customerAddress = company.billing_address || deal.billing_address || joinAddress([company.address, company.address2, company.city, company.state, company.country, company.zip], language === 'en' ? ', ' : '، ');
 
   const context: ProposalContext = {
