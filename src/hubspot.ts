@@ -55,6 +55,12 @@ const LINE_ITEM_PROPERTIES = [
   'hs_post_tax_amount',
   'hs_line_item_currency_code',
   'recurringbillingfrequency',
+  'hs_recurring_billing_period',
+  'hs_recurring_billing_terms',
+  'hs_recurring_billing_number_of_payments',
+  'hs_tcv',
+  'hs_mrr',
+  'hs_arr',
   'hs_sku',
 ];
 
@@ -183,11 +189,13 @@ export async function buildSnapshot(env: Env, dealId: string, version: number): 
   let tax = 0;
   for (const item of lineItems) {
     const quantity = Math.max(number(item.quantity), 1);
-    const gross = number(item.hs_pre_discount_amount) || number(item.price) * quantity;
-    const itemDiscount = number(item.hs_total_discount || item.discount) || gross * (number(item.hs_discount_percentage) / 100);
-    const net = number(item.amount) || Math.max(gross - itemDiscount, 0);
-    subtotal += net;
-    discount += itemDiscount;
+    const periodGross = number(item.hs_pre_discount_amount) || number(item.price) * quantity;
+    const itemDiscount = number(item.hs_total_discount || item.discount) || periodGross * (number(item.hs_discount_percentage) / 100);
+    const periodNet = number(item.amount) || Math.max(periodGross - itemDiscount, 0);
+    const contractNet = isBlank(item.hs_tcv) ? periodNet : number(item.hs_tcv);
+    const contractGross = Math.max(periodGross, contractNet + itemDiscount);
+    subtotal += contractNet;
+    discount += Math.max(contractGross - contractNet, 0);
     tax += number(item.hs_tax_amount);
   }
 
