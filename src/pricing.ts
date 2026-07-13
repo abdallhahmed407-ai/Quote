@@ -84,14 +84,19 @@ export function renderPricing(snapshot: ProposalSnapshot, context: ProposalConte
   const grand = subtotal + tax;
   const tableStyle = 'width:88%;margin:0 auto;border-radius:10px 10px 0 0;overflow:hidden;';
   const totalsStyle = language === 'ar' ? 'width:44%;margin:22px auto 0 6%;' : 'width:44%;margin:22px 6% 0 auto;';
+  const titleStyle = `width:88%;margin:0 auto 18px;display:flex;align-items:center;gap:14px;direction:${language === 'ar' ? 'rtl' : 'ltr'};`;
+  const gridAreas = language === 'ar'
+    ? '"expiry expiry quote quote" "currency issue customer customer"'
+    : '"quote quote expiry expiry" "customer customer issue currency"';
+  const metaStyle = `width:88%;margin:0 auto 22px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-areas:${gridAreas};gap:12px;`;
 
-  const title = `<div class="price-section-title"><span></span><h2>${escapeHtml(l.title)}</h2></div>`;
-  const metadata = `<div class="price-meta price-meta-complete">
-    <div class="price-card quote-card"><b>${escapeHtml(l.quote)}</b><span>${escapeHtml(context.quoteNumber)}</span></div>
-    <div class="price-card expiry-card"><b>${escapeHtml(l.expiry)}</b><span>${escapeHtml(context.expirationDate || '-')}</span></div>
-    <div class="price-card customer-card"><b>${escapeHtml(l.customer)}</b><span>${escapeHtml(context.customerName || '-')}</span></div>
-    <div class="price-card issue-card"><b>${escapeHtml(l.issueDate)}</b><span>${escapeHtml(context.createdDate || '-')}</span></div>
-    <div class="price-card currency-card"><b>${escapeHtml(l.currency)}</b><span>${escapeHtml(context.currency || 'SAR')}</span></div>
+  const title = `<div class="price-section-title" style="${titleStyle}"><span style="display:block;width:5px;height:42px;background:#7b5ea7;border-radius:4px;flex:0 0 5px;"></span><h2 style="margin:0;color:#172b73;font-size:28px;line-height:1.2;font-weight:900;">${escapeHtml(l.title)}</h2></div>`;
+  const metadata = `<div class="price-meta price-meta-complete" style="${metaStyle}">
+    <div class="price-card quote-card" style="grid-area:quote;"><b>${escapeHtml(l.quote)}</b><span>${escapeHtml(context.quoteNumber)}</span></div>
+    <div class="price-card expiry-card" style="grid-area:expiry;"><b>${escapeHtml(l.expiry)}</b><span>${escapeHtml(context.expirationDate || '-')}</span></div>
+    <div class="price-card customer-card" style="grid-area:customer;"><b>${escapeHtml(l.customer)}</b><span>${escapeHtml(context.customerName || '-')}</span></div>
+    <div class="price-card issue-card" style="grid-area:issue;"><b>${escapeHtml(l.issueDate)}</b><span>${escapeHtml(context.createdDate || '-')}</span></div>
+    <div class="price-card currency-card" style="grid-area:currency;"><b>${escapeHtml(l.currency)}</b><span>${escapeHtml(context.currency || 'SAR')}</span></div>
   </div>`;
 
   return {
