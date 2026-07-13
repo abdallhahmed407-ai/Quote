@@ -128,11 +128,31 @@ function htmlHeaders(): HeadersInit {
   };
 }
 
+function improveCoverCardText(html: string): string {
+  const style = `<style id="ojoor-cover-card-text-fix">
+    .cover-card .cc-value,.cover-card .ef-light,
+    [data-cid="QX2Xfb"],[data-cid="HfpEDS"],[data-cid="MzWWQN"],[data-cid="2WqGGa"],
+    [data-cid="K7Bu6y"],[data-cid="UqDNGq"],[data-cid="qJ3WHc"],[data-cid="x2nAbT"]{
+      line-height:1.28!important;
+      min-height:28px!important;
+      max-height:52px!important;
+      padding:2px 8px 5px!important;
+      box-sizing:border-box!important;
+      overflow:visible!important;
+      transform:translateY(-1px)!important;
+    }
+  </style>`;
+  return html.includes('</head>') ? html.replace('</head>', `${style}</head>`) : `${style}${html}`;
+}
+
 async function renderSnapshot(snapshot: ProposalSnapshot, downloadPath = '/preview/pdf?download=1'): Promise<{ snapshot: ProposalSnapshot; html: string }> {
   let proposalTemplate: string;
   try { proposalTemplate = await getProposalTemplate(snapshot.deal?.proposal_language); }
   catch (error) { throw new Error(`TEMPLATE_LOAD_FAILED: ${safeErrorMessage(error)}`); }
-  try { return { snapshot, html: renderProposal(snapshot, proposalTemplate, downloadPath) }; }
+  try {
+    const html = improveCoverCardText(renderProposal(snapshot, proposalTemplate, downloadPath));
+    return { snapshot, html };
+  }
   catch (error) { throw new Error(`PROPOSAL_RENDER_FAILED: ${safeErrorMessage(error)}`); }
 }
 
