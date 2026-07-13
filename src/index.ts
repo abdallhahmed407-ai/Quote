@@ -145,12 +145,34 @@ function improveCoverCardText(html: string): string {
   return html.includes('</head>') ? html.replace('</head>', `${style}</head>`) : `${style}${html}`;
 }
 
+function improveFooterPhone(html: string): string {
+  const phone = '<span class="ojoor-footer-phone" dir="ltr">+966 56 443 2194</span>';
+  const separator = '(?:\\s|&nbsp;|<br\\s*\\/?>)*';
+  const forward = new RegExp(`\\+?${separator}966${separator}56${separator}443${separator}2194`, 'gi');
+  const reversed = new RegExp(`2194${separator}443${separator}56${separator}966${separator}\\+`, 'gi');
+  let normalized = html.replace(forward, phone).replace(reversed, phone);
+  const style = `<style id="ojoor-footer-phone-fix">
+    .ojoor-footer-phone{
+      direction:ltr!important;
+      unicode-bidi:isolate!important;
+      white-space:nowrap!important;
+      display:inline-block!important;
+      font-size:9px!important;
+      line-height:1.2!important;
+      letter-spacing:-.1px!important;
+      text-align:left!important;
+    }
+  </style>`;
+  normalized = normalized.includes('</head>') ? normalized.replace('</head>', `${style}</head>`) : `${style}${normalized}`;
+  return normalized;
+}
+
 async function renderSnapshot(snapshot: ProposalSnapshot, downloadPath = '/preview/pdf?download=1'): Promise<{ snapshot: ProposalSnapshot; html: string }> {
   let proposalTemplate: string;
   try { proposalTemplate = await getProposalTemplate(snapshot.deal?.proposal_language); }
   catch (error) { throw new Error(`TEMPLATE_LOAD_FAILED: ${safeErrorMessage(error)}`); }
   try {
-    const html = improveCoverCardText(renderProposal(snapshot, proposalTemplate, downloadPath));
+    const html = improveFooterPhone(improveCoverCardText(renderProposal(snapshot, proposalTemplate, downloadPath)));
     return { snapshot, html };
   }
   catch (error) { throw new Error(`PROPOSAL_RENDER_FAILED: ${safeErrorMessage(error)}`); }
