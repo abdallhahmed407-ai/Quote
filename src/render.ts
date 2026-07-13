@@ -64,10 +64,10 @@ function injectDynamicStyles(html: string): string {
   const style = `<style id="ojoor-dynamic-hubspot-styles">
     html,body,.page,.page *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
     .ojoor-brand-logo{display:block!important;background-image:url("${OJOOR_HR_STATION_LOGO_DATA_URL}")!important;background-repeat:no-repeat!important;background-position:center!important;background-size:contain!important;flex:0 0 auto!important}
-    .cover-top{display:flex!important;align-items:center!important;justify-content:center!important;padding:32px 60px 14px!important;min-height:96px!important}
-    .ojoor-brand-logo-cover{width:280px!important;height:84px!important}
-    .ih-logo{display:flex!important;align-items:center!important;justify-content:flex-start!important;width:150px!important;height:48px!important;font-size:0!important;line-height:0!important;color:transparent!important}
-    .ojoor-brand-logo-header{width:145px!important;height:43px!important}
+    .cover-top{display:flex!important;align-items:center!important;justify-content:center!important;padding:28px 60px 10px!important;min-height:88px!important}
+    .ojoor-brand-logo-cover{width:250px!important;height:74px!important;filter:none!important;opacity:1!important}
+    .ih-logo{display:flex!important;align-items:center!important;justify-content:flex-start!important;width:128px!important;height:42px!important;font-size:0!important;line-height:0!important;color:transparent!important}
+    .ojoor-brand-logo-header{width:118px!important;height:35px!important;filter:brightness(0) invert(1)!important;opacity:1!important}
     .print-toolbar{position:relative;z-index:999999;display:flex;align-items:center;justify-content:center;gap:8px;direction:ltr;width:100%;margin:28px auto 44px}.print-toolbar[dir="rtl"]{direction:rtl}.print-button{appearance:none;border:0;border-radius:999px;background:#1f347f;color:#fff;box-shadow:0 12px 34px rgba(31,52,127,.24);font-family:Cairo,Arial,Tahoma,sans-serif;font-size:20px;font-weight:900;line-height:1;padding:20px 54px;min-width:220px;cursor:pointer}.print-button:hover{filter:brightness(1.07)}.print-button:active{transform:translateY(1px)}
     .page-num{font-size:10px;color:#9999BB;font-weight:600;direction:ltr;unicode-bidi:isolate;min-width:64px;text-align:center;display:inline-block}
     .dynamic-pricing-body{display:block!important;align-items:initial!important;justify-content:initial!important;text-align:initial!important;padding-top:0!important;margin-top:0!important;min-height:auto!important;height:auto!important;background:transparent!important;transform:translateY(15px)!important;transform-origin:top center!important}.dynamic-pricing-body .price-box{margin-top:0!important}
