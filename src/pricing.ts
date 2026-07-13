@@ -207,14 +207,14 @@ function labels(language: ProposalLanguage) {
       quote: 'Quote No.', expiry: 'Expiry Date',
       service: 'Products & Services', billing: 'Billing Frequency', qty: 'Quantity', unit: 'Unit Price', total: 'Contract Price',
       gross: 'Contract subtotal before discount', totalDiscount: 'Total discount', beforeTax: 'Contract subtotal', tax: 'VAT / Tax', grand: 'Total Contract Value',
-      discount: 'Discount', forTerm: 'for', empty: 'No pricing line items have been added.', fullTermNote: 'Prices reflect the complete contract term from HubSpot billing settings.'
+      discount: 'Discount', forTerm: 'for', empty: 'No pricing line items have been added.'
     };
   }
   return {
     quote: 'رقم العرض', expiry: 'تاريخ انتهاء العرض',
     service: 'المنتجات والخدمات', billing: 'دورية الفوترة', qty: 'الكمية', unit: 'سعر الوحدة', total: 'قيمة العقد',
     gross: 'إجمالي العقد قبل الخصم', totalDiscount: 'إجمالي الخصم', beforeTax: 'إجمالي العقد قبل الضريبة', tax: 'الضريبة', grand: 'إجمالي قيمة العقد',
-    discount: 'خصم', forTerm: 'لمدة', empty: 'لا توجد بنود سعرية مضافة.', fullTermNote: 'الأسعار تعكس مدة العقد كاملة وفق إعدادات الفوترة في HubSpot.'
+    discount: 'خصم', forTerm: 'لمدة', empty: 'لا توجد بنود سعرية مضافة.'
   };
 }
 
@@ -260,10 +260,9 @@ export function renderPricing(snapshot: ProposalSnapshot, context: ProposalConte
   const totalsStyle = language === 'ar' ? 'width:44%;margin:22px auto 0 6%;' : 'width:44%;margin:22px 6% 0 auto;';
   const metaStyle = 'width:88%;margin:0 auto 18px;display:grid;grid-template-columns:1fr 1fr;gap:16px;';
   const metadata = `<div class="price-meta" style="${metaStyle}"><div><b>${escapeHtml(l.quote)}</b><span>${escapeHtml(context.quoteNumber)}</span></div><div><b>${escapeHtml(l.expiry)}</b><span>${escapeHtml(context.expirationDate || '-')}</span></div></div>`;
-  const contractNote = `<div style="width:88%;margin:0 auto 10px;font-size:9px;color:#777b8d;${language === 'ar' ? 'text-align:right;' : 'text-align:left;'}">${escapeHtml(l.fullTermNote)}</div>`;
 
   return {
-    firstBody: `<div class="price-box ${language === 'ar' ? 'rtl' : 'ltr'}">${metadata}${contractNote}<table class="price-table" style="${tableStyle}"><thead><tr><th>${escapeHtml(l.service)}</th><th>${escapeHtml(l.billing)}</th><th style="text-align:center;">${escapeHtml(l.qty)}</th><th>${escapeHtml(l.unit)}</th><th>${escapeHtml(l.total)}</th></tr></thead><tbody>${rows}</tbody></table><div class="price-totals" style="${totalsStyle}"><div><span>${escapeHtml(l.gross)}</span><b>${escapeHtml(money(gross, context.currency))}</b></div><div><span>${escapeHtml(l.totalDiscount)}</span><b>${escapeHtml(money(discount, context.currency))}</b></div><div><span>${escapeHtml(l.beforeTax)}</span><b>${escapeHtml(money(subtotal, context.currency))}</b></div><div><span>${escapeHtml(l.tax)}</span><b>${escapeHtml(money(tax, context.currency))}</b></div><div class="grand"><span>${escapeHtml(l.grand)}</span><b>${escapeHtml(money(grand, context.currency))}</b></div></div></div>`,
+    firstBody: `<div class="price-box ${language === 'ar' ? 'rtl' : 'ltr'}">${metadata}<table class="price-table" style="${tableStyle}"><thead><tr><th>${escapeHtml(l.service)}</th><th>${escapeHtml(l.billing)}</th><th style="text-align:center;">${escapeHtml(l.qty)}</th><th>${escapeHtml(l.unit)}</th><th>${escapeHtml(l.total)}</th></tr></thead><tbody>${rows}</tbody></table><div class="price-totals" style="${totalsStyle}"><div><span>${escapeHtml(l.gross)}</span><b>${escapeHtml(money(gross, context.currency))}</b></div><div><span>${escapeHtml(l.totalDiscount)}</span><b>${escapeHtml(money(discount, context.currency))}</b></div><div><span>${escapeHtml(l.beforeTax)}</span><b>${escapeHtml(money(subtotal, context.currency))}</b></div><div><span>${escapeHtml(l.tax)}</span><b>${escapeHtml(money(tax, context.currency))}</b></div><div class="grand"><span>${escapeHtml(l.grand)}</span><b>${escapeHtml(money(grand, context.currency))}</b></div></div></div>`,
     extraPages: '',
   };
 }
