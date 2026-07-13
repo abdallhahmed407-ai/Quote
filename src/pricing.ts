@@ -78,9 +78,13 @@ export function renderPricing(snapshot: ProposalSnapshot, context: ProposalConte
   }).join('') : `<tr><td colspan="6">${escapeHtml(l.empty)}</td></tr>`;
   const gross = subtotal + discount;
   const grand = subtotal + tax;
+  const tableStyle = 'width:88%;margin:0 auto;border-radius:10px 10px 0 0;overflow:hidden;';
+  const totalsStyle = language === 'ar'
+    ? 'width:44%;margin:22px auto 0 6%;'
+    : 'width:44%;margin:22px 6% 0 auto;';
 
   return {
-    firstBody: `<div class="price-box ${language === 'ar' ? 'rtl' : 'ltr'}"><div class="price-meta"><div><b>${language === 'ar' ? 'رقم العرض' : 'Quote No.'}</b><span>${escapeHtml(context.quoteNumber)}</span></div><div><b>${language === 'ar' ? 'تاريخ الانتهاء' : 'Expiry Date'}</b><span>${escapeHtml(context.expirationDate || '-')}</span></div></div><table class="price-table"><thead><tr><th>#</th><th>${escapeHtml(l.service)}</th><th>${escapeHtml(l.qty)}</th><th>${escapeHtml(l.unit)}</th><th>${escapeHtml(l.discount)}</th><th>${escapeHtml(l.total)}</th></tr></thead><tbody>${rows}</tbody></table><div class="price-totals"><div><span>${escapeHtml(l.gross)}</span><b>${escapeHtml(money(gross, context.currency))}</b></div><div><span>${escapeHtml(l.totalDiscount)}</span><b>${escapeHtml(money(discount, context.currency))}</b></div><div><span>${escapeHtml(l.beforeTax)}</span><b>${escapeHtml(money(subtotal, context.currency))}</b></div><div><span>${escapeHtml(l.tax)}</span><b>${escapeHtml(money(tax, context.currency))}</b></div><div class="grand"><span>${escapeHtml(l.grand)}</span><b>${escapeHtml(money(grand, context.currency))}</b></div></div></div>`,
+    firstBody: `<div class="price-box ${language === 'ar' ? 'rtl' : 'ltr'}"><div class="price-meta"><div><b>${language === 'ar' ? 'رقم العرض' : 'Quote No.'}</b><span>${escapeHtml(context.quoteNumber)}</span></div><div><b>${language === 'ar' ? 'تاريخ الانتهاء' : 'Expiry Date'}</b><span>${escapeHtml(context.expirationDate || '-')}</span></div></div><table class="price-table" style="${tableStyle}"><thead><tr><th>#</th><th>${escapeHtml(l.service)}</th><th>${escapeHtml(l.qty)}</th><th>${escapeHtml(l.unit)}</th><th>${escapeHtml(l.discount)}</th><th>${escapeHtml(l.total)}</th></tr></thead><tbody>${rows}</tbody></table><div class="price-totals" style="${totalsStyle}"><div><span>${escapeHtml(l.gross)}</span><b>${escapeHtml(money(gross, context.currency))}</b></div><div><span>${escapeHtml(l.totalDiscount)}</span><b>${escapeHtml(money(discount, context.currency))}</b></div><div><span>${escapeHtml(l.beforeTax)}</span><b>${escapeHtml(money(subtotal, context.currency))}</b></div><div><span>${escapeHtml(l.tax)}</span><b>${escapeHtml(money(tax, context.currency))}</b></div><div class="grand"><span>${escapeHtml(l.grand)}</span><b>${escapeHtml(money(grand, context.currency))}</b></div></div></div>`,
     extraPages: '',
   };
 }
