@@ -157,9 +157,15 @@ function improveFooterPhone(html: string): string {
       unicode-bidi:isolate!important;
       white-space:nowrap!important;
       display:inline-block!important;
-      font-size:9px!important;
-      line-height:1.2!important;
-      letter-spacing:-.1px!important;
+      width:max-content!important;
+      max-width:none!important;
+      overflow:visible!important;
+      font-size:11px!important;
+      font-weight:700!important;
+      line-height:1.25!important;
+      letter-spacing:0!important;
+      word-spacing:1.5px!important;
+      font-variant-numeric:tabular-nums!important;
       text-align:left!important;
     }
   </style>`;
