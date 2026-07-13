@@ -1,5 +1,6 @@
 import type { ProposalSnapshot } from './types';
 import { escapeHtml, renderPricing, type ProposalContext, type ProposalLanguage } from './pricing';
+import { OJOOR_HR_STATION_LOGO_DATA_URL } from './logo';
 
 const PROPOSAL_TIME_ZONE = 'Asia/Riyadh';
 const OJOOR_LEGAL_NAME_AR = 'شركة الرائدة للموارد البشرية — أجور';
@@ -8,6 +9,7 @@ const OJOOR_CR_NUMBER = '1010586885';
 const OJOOR_VAT_NUMBER = '310712172300003';
 const OJOOR_ADDRESS_AR = 'مبنى 8730، حي العليا، مكتب 309، الرمز البريدي 12214، الدور الثالث';
 const OJOOR_ADDRESS_EN = 'Building No. 8730, Al Olaya District, Office No. 309, Postal Code 12214, Third Floor';
+const OJOOR_LOGO_ASPECT_RATIO = 619 / 184;
 
 function replaceAll(source: string, marker: string, value: string): string {
   return source.split(marker).join(value);
@@ -45,9 +47,59 @@ function joinAddress(parts: unknown[], separator: string): string {
   return parts.map((part) => String(part || '').trim()).filter(Boolean).join(separator);
 }
 
+function readPngDimensions(dataUrl: string): { width: number; height: number } | null {
+  if (!dataUrl.startsWith('data:image/png;base64,')) return null;
+  try {
+    const encoded = dataUrl.slice('data:image/png;base64,'.length, 'data:image/png;base64,'.length + 64);
+    const bytes = atob(encoded);
+    if (bytes.length < 24 || bytes.charCodeAt(0) !== 137 || bytes.slice(1, 4) !== 'PNG') return null;
+    const width = ((bytes.charCodeAt(16) << 24) | (bytes.charCodeAt(17) << 16) | (bytes.charCodeAt(18) << 8) | bytes.charCodeAt(19)) >>> 0;
+    const height = ((bytes.charCodeAt(20) << 24) | (bytes.charCodeAt(21) << 16) | (bytes.charCodeAt(22) << 8) | bytes.charCodeAt(23)) >>> 0;
+    return width > 0 && height > 0 ? { width, height } : null;
+  } catch {
+    return null;
+  }
+}
+
+function injectLogoFallbackScript(html: string): string {
+  const logoJson = JSON.stringify(OJOOR_HR_STATION_LOGO_DATA_URL);
+  const script = `<script id="ojoor-logo-replacement-script">(()=>{const src=${logoJson};const apply=()=>{const pages=[...document.querySelectorAll('.page')];const obvious=[...document.querySelectorAll('img')].filter((img)=>/ojoor|أجور|logo|brand/i.test([img.alt,img.title,img.id,img.className].join(' ')));const targets=new Set(obvious);if(!obvious.length){pages.forEach((page)=>{const pageRect=page.getBoundingClientRect();const options=[...page.querySelectorAll('img')].filter((img)=>{const rect=img.getBoundingClientRect();const ratio=(img.naturalWidth||rect.width||1)/(img.naturalHeight||rect.height||1);const top=rect.top-pageRect.top;return top>=0&&top<170&&rect.width>=45&&rect.width<=280&&rect.height>=12&&ratio>1.8&&ratio<6;}).sort((a,b)=>b.getBoundingClientRect().width-a.getBoundingClientRect().width);if(options[0])targets.add(options[0]);});}targets.forEach((img)=>{img.src=src;img.setAttribute('data-ojoor-logo','new');img.style.objectFit='contain';});document.querySelectorAll('[class*="logo"],[id*="logo"]').forEach((el)=>{if(el.tagName!=='IMG'){el.style.backgroundImage='url('+JSON.stringify(src)+')';el.style.backgroundSize='contain';el.style.backgroundRepeat='no-repeat';el.style.backgroundPosition='center';}});};document.readyState==='loading'?document.addEventListener('DOMContentLoaded',apply,{once:true}):apply();})();</script>`;
+  return html.includes('</body>') ? html.replace('</body>', `${script}</body>`) : `${html}${script}`;
+}
+
+function replaceProposalLogo(html: string): string {
+  const assets = html.match(/data:image\/(?:png|jpe?g|webp);base64,[A-Za-z0-9+/=]+/g) || [];
+  const counts = new Map<string, number>();
+  for (const asset of assets) counts.set(asset, (counts.get(asset) || 0) + 1);
+  const sectionCount = (html.match(/<section\b/g) || []).length;
+
+  const ranked = [...counts.entries()]
+    .map(([asset, count]) => {
+      const dimensions = readPngDimensions(asset);
+      const ratio = dimensions ? dimensions.width / dimensions.height : 0;
+      const looksLikeWideLogo = Boolean(dimensions && dimensions.width >= 80 && dimensions.height >= 20 && ratio >= 1.8 && ratio <= 6);
+      const repeatedNearPageCount = sectionCount > 0 && Math.abs(count - sectionCount) <= 2;
+      const score =
+        (looksLikeWideLogo ? 4_000_000 : 0) +
+        (repeatedNearPageCount ? 3_000_000 : 0) +
+        Math.min(count, Math.max(sectionCount, 1)) * 250_000 +
+        (dimensions ? Math.max(0, 1_000_000 - Math.abs(ratio - OJOOR_LOGO_ASPECT_RATIO) * 250_000) : 0) +
+        Math.min(asset.length, 200_000);
+      return { asset, count, dimensions, looksLikeWideLogo, score };
+    })
+    .filter((item) => item.looksLikeWideLogo && item.asset.length >= 800)
+    .sort((a, b) => b.score - a.score);
+
+  const best = ranked[0];
+  if (!best) return injectLogoFallbackScript(html);
+  const replaced = html.split(best.asset).join(OJOOR_HR_STATION_LOGO_DATA_URL);
+  return replaced === html ? injectLogoFallbackScript(html) : replaced;
+}
+
 function injectDynamicStyles(html: string): string {
   const style = `<style id="ojoor-dynamic-hubspot-styles">
     html,body,.page,.page *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+    img[data-ojoor-logo="new"]{object-fit:contain!important}
     .print-toolbar{position:relative;z-index:999999;display:flex;align-items:center;justify-content:center;gap:8px;direction:ltr;width:100%;margin:28px auto 44px}.print-toolbar[dir="rtl"]{direction:rtl}.print-button{appearance:none;border:0;border-radius:999px;background:#1f347f;color:#fff;box-shadow:0 12px 34px rgba(31,52,127,.24);font-family:Cairo,Arial,Tahoma,sans-serif;font-size:20px;font-weight:900;line-height:1;padding:20px 54px;min-width:220px;cursor:pointer}.print-button:hover{filter:brightness(1.07)}.print-button:active{transform:translateY(1px)}
     .page-num{font-size:10px;color:#9999BB;font-weight:600;direction:ltr;unicode-bidi:isolate;min-width:64px;text-align:center;display:inline-block}
     .dynamic-pricing-body{display:block!important;align-items:initial!important;justify-content:initial!important;text-align:initial!important;padding-top:0!important;margin-top:0!important;min-height:auto!important;height:auto!important;background:transparent!important;transform:translateY(15px)!important;transform-origin:top center!important}.dynamic-pricing-body .price-box{margin-top:0!important}
@@ -119,7 +171,8 @@ export function renderProposal(snapshot: ProposalSnapshot, template: string, _do
     '{{EXTRA_PRICING_PAGES}}': pricing.extraPages,
   };
 
-  let html = injectPrintButton(injectPageNumbers(injectDynamicStyles(template)), language);
+  let html = replaceProposalLogo(template);
+  html = injectPrintButton(injectPageNumbers(injectDynamicStyles(html)), language);
 
   const cidValues: Record<string, string> = language === 'en'
     ? {
