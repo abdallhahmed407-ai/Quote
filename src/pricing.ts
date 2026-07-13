@@ -35,18 +35,25 @@ function number(value: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function isBlank(value: unknown): boolean {
+  return value === undefined || value === null || String(value).trim() === '';
+}
+
 function money(value: unknown, currency: string): string {
   return `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(number(value))} ${currency}`;
 }
 
-function itemNumbers(item: JsonObject): { quantity: number; unitPrice: number; discount: number; net: number; tax: number } {
+function itemNumbers(item: JsonObject): { quantity: number; unitPrice: number; gross: number; discount: number; net: number; tax: number } {
   const quantity = Math.max(number(item.quantity), 1);
   const unitPrice = number(item.price);
-  const gross = number(item.hs_pre_discount_amount) || unitPrice * quantity;
-  const discount = number(item.hs_total_discount || item.discount) || gross * (number(item.hs_discount_percentage) / 100);
-  const net = number(item.amount) || Math.max(gross - discount, 0);
+  const periodGross = number(item.hs_pre_discount_amount) || unitPrice * quantity;
+  const itemDiscount = number(item.hs_total_discount || item.discount) || periodGross * (number(item.hs_discount_percentage) / 100);
+  const periodNet = number(item.amount) || Math.max(periodGross - itemDiscount, 0);
+  const contractNet = isBlank(item.hs_tcv) ? periodNet : number(item.hs_tcv);
+  const contractGross = Math.max(periodGross, contractNet + itemDiscount);
+  const contractDiscount = Math.max(contractGross - contractNet, 0);
   const tax = number(item.hs_tax_amount);
-  return { quantity, unitPrice, discount, net, tax };
+  return { quantity, unitPrice, gross: contractGross, discount: contractDiscount, net: contractNet, tax };
 }
 
 function labels(language: ProposalLanguage) {
@@ -68,19 +75,20 @@ export function renderPricing(snapshot: ProposalSnapshot, context: ProposalConte
   const language = context.language || 'ar';
   const l = labels(language);
   const items = Array.isArray(snapshot.lineItems) ? snapshot.lineItems : [];
+  let gross = 0;
   let subtotal = 0;
   let discount = 0;
   let tax = 0;
 
   const rows = items.length ? items.map((item, index) => {
     const v = itemNumbers(item);
+    gross += v.gross;
     subtotal += v.net;
     discount += v.discount;
     tax += v.tax;
     return `<tr><td>${index + 1}</td><td><b>${escapeHtml(item.name || (language === 'ar' ? 'خدمة أجور' : 'Ojoor Service'))}</b>${item.description ? `<small>${escapeHtml(item.description)}</small>` : ''}</td><td>${v.quantity}</td><td>${escapeHtml(money(v.unitPrice, context.currency))}</td><td>${escapeHtml(money(v.discount, context.currency))}</td><td>${escapeHtml(money(v.net, context.currency))}</td></tr>`;
   }).join('') : `<tr><td colspan="6">${escapeHtml(l.empty)}</td></tr>`;
 
-  const gross = subtotal + discount;
   const grand = subtotal + tax;
   const tableStyle = 'width:88%;margin:0 auto;border-radius:10px 10px 0 0;overflow:hidden;';
   const totalsStyle = language === 'ar' ? 'width:44%;margin:22px auto 0 6%;' : 'width:44%;margin:22px 6% 0 auto;';
