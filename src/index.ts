@@ -8,6 +8,13 @@ const DEFAULT_PUBLIC_BASE_URL = 'https://quote.abdallhahmed407.workers.dev';
 const RENDERER_VERSION = 'html-template-cdn-runtime-v3';
 type ProposalLanguage = 'ar' | 'en';
 
+type BillingDuration = {
+  years: number;
+  months: number;
+  weeks: number;
+  days: number;
+};
+
 function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data, null, 2), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 }
@@ -31,6 +38,88 @@ function assertConfigured(env: Env): void {
 function normalizeProposalLanguage(value: unknown): ProposalLanguage {
   const normalized = String(value || '').trim().toLowerCase();
   return ['english', 'en', 'eng', 'إنجليزي', 'انجليزي'].includes(normalized) ? 'en' : 'ar';
+}
+
+function numeric(value: unknown): number {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isBlank(value: unknown): boolean {
+  return value === undefined || value === null || String(value).trim() === '';
+}
+
+function normalizeBillingFrequency(item: Record<string, any>): string {
+  const terms = String(item.hs_recurring_billing_terms || '').trim().toUpperCase();
+  const payments = numeric(item.hs_recurring_billing_number_of_payments);
+  if (terms === 'FIXED' && payments === 1) return 'one_time';
+  const frequency = String(item.recurringbillingfrequency || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (!frequency || frequency === 'onetime' || frequency === 'one_time') return 'one_time';
+  if (frequency === 'annual' || frequency === 'yearly') return 'annually';
+  if (frequency === 'semiannually' || frequency === 'every_six_months') return 'semi_annually';
+  if (frequency === 'every_two_years') return 'biennially';
+  return frequency;
+}
+
+function parseBillingDuration(value: unknown): BillingDuration | null {
+  const raw = String(value || '').trim().toUpperCase();
+  const match = raw.match(/^P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?$/);
+  if (!match) return null;
+  return {
+    years: numeric(match[1]),
+    months: numeric(match[2]),
+    weeks: numeric(match[3]),
+    days: numeric(match[4]),
+  };
+}
+
+function contractMultiplier(item: Record<string, any>, periodNet: number): number {
+  const contractTotal = numeric(item.hs_tcv);
+  if (contractTotal > 0 && periodNet > 0) {
+    const ratio = contractTotal / periodNet;
+    if (Number.isFinite(ratio) && ratio > 0) return ratio;
+  }
+
+  const explicitPayments = numeric(item.hs_recurring_billing_number_of_payments);
+  if (explicitPayments >= 1) return explicitPayments;
+
+  const frequency = normalizeBillingFrequency(item);
+  if (frequency === 'one_time') return 1;
+  const duration = parseBillingDuration(item.hs_recurring_billing_period);
+  if (!duration) return 1;
+
+  const totalMonths = duration.years * 12 + duration.months;
+  if (frequency === 'monthly' && totalMonths > 0) return totalMonths;
+  if (frequency === 'quarterly' && totalMonths > 0) return totalMonths / 3;
+  if (frequency === 'semi_annually' && totalMonths > 0) return totalMonths / 6;
+  if (frequency === 'annually' && totalMonths > 0) return totalMonths / 12;
+  if (frequency === 'biennially' && totalMonths > 0) return totalMonths / 24;
+  if (frequency === 'weekly' && duration.weeks > 0) return duration.weeks;
+  if (frequency === 'daily' && duration.days > 0) return duration.days;
+  return 1;
+}
+
+function calculateContractTotals(snapshot: ProposalSnapshot): { subtotal: number; tax: number; grandTotal: number } {
+  let subtotal = 0;
+  let tax = 0;
+
+  for (const item of snapshot.lineItems || []) {
+    const quantity = Math.max(numeric(item.quantity), 1);
+    const periodGross = numeric(item.hs_pre_discount_amount) || numeric(item.price) * quantity;
+    const periodDiscount = numeric(item.hs_total_discount || item.discount) || periodGross * (numeric(item.hs_discount_percentage) / 100);
+    const periodNet = numeric(item.amount) || Math.max(periodGross - periodDiscount, 0);
+    const multiplier = contractMultiplier(item, periodNet);
+    const contractNet = isBlank(item.hs_tcv) ? periodNet * multiplier : numeric(item.hs_tcv);
+    const periodTax = numeric(item.hs_tax_amount) || Math.max(numeric(item.hs_post_tax_amount) - periodNet, 0);
+
+    subtotal += contractNet;
+    tax += periodTax * multiplier;
+  }
+
+  const roundCurrency = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+  const roundedSubtotal = roundCurrency(subtotal);
+  const roundedTax = roundCurrency(tax);
+  return { subtotal: roundedSubtotal, tax: roundedTax, grandTotal: roundCurrency(roundedSubtotal + roundedTax) };
 }
 
 function createPreviewSnapshot(language: ProposalLanguage = 'ar'): ProposalSnapshot {
@@ -87,11 +176,24 @@ async function generateOne(env: Env, dealRecord: Record<string, any>, request?: 
   await patchDeal(env, dealId, { generate_proposal: 'no_action', proposal_status: 'Generating', proposal_error: '' });
   try {
     const snapshot = await buildSnapshot(env, dealId, nextVersion);
+    const calculatedTotals = calculateContractTotals(snapshot);
+    snapshot.totals = { ...snapshot.totals, ...calculatedTotals };
+    snapshot.deal.amount = String(calculatedTotals.grandTotal);
+
     const noteId = await createSnapshotNote(env, snapshot);
     snapshot.noteId = noteId;
     const token = await createPublicToken({ n: noteId, d: dealId, v: nextVersion }, env.PROPOSAL_SIGNING_SECRET);
     const proposalUrl = `${root}/p/${token}`;
-    await patchDeal(env, dealId, { proposal_status: 'Generated', proposal_url: proposalUrl, proposal_pdf_url: `${proposalUrl}/pdf`, proposal_version: String(nextVersion), proposal_generated_at: new Date().toISOString(), proposal_error: '', generate_proposal: 'no_action' });
+    await patchDeal(env, dealId, {
+      amount: String(calculatedTotals.grandTotal),
+      proposal_status: 'Generated',
+      proposal_url: proposalUrl,
+      proposal_pdf_url: `${proposalUrl}/pdf`,
+      proposal_version: String(nextVersion),
+      proposal_generated_at: new Date().toISOString(),
+      proposal_error: '',
+      generate_proposal: 'no_action',
+    });
   } catch (error) {
     await patchDeal(env, dealId, { proposal_status: 'Failed', proposal_error: safeErrorMessage(error).slice(0, 5000), generate_proposal: 'no_action' });
     throw error;
