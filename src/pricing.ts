@@ -164,6 +164,8 @@ function contractTerm(item: JsonObject, periodNet: number, language: ProposalLan
 }
 
 function contractMultiplier(item: JsonObject, periodNet: number): number {
+  if (normalizeFrequency(item) === 'one_time') return 1;
+
   const contractTotal = number(item.hs_tcv);
   if (contractTotal > 0 && periodNet > 0) {
     const ratio = contractTotal / periodNet;
@@ -175,7 +177,7 @@ function contractMultiplier(item: JsonObject, periodNet: number): number {
 
   const duration = parseDuration(item.hs_recurring_billing_period);
   const key = normalizeFrequency(item);
-  if (!duration || key === 'one_time') return 1;
+  if (!duration) return 1;
   const totalMonths = duration.years * 12 + duration.months;
   if (key === 'monthly' && totalMonths > 0) return totalMonths;
   if (key === 'quarterly' && totalMonths > 0) return totalMonths / 3;
@@ -197,8 +199,9 @@ function itemNumbers(item: JsonObject): { quantity: number; unitPrice: number; g
   const contractNet = isBlank(item.hs_tcv) ? periodNet * multiplier : number(item.hs_tcv);
   const contractGross = Math.max(periodGross * multiplier, contractNet);
   const contractDiscount = Math.max(contractGross - contractNet, periodDiscount * multiplier, 0);
-  const tax = number(item.hs_tax_amount);
-  return { quantity, unitPrice, gross: contractGross, discount: contractDiscount, net: contractNet, tax, periodNet };
+  const periodTax = number(item.hs_tax_amount) || Math.max(number(item.hs_post_tax_amount) - periodNet, 0);
+  const contractTax = periodTax * multiplier;
+  return { quantity, unitPrice, gross: contractGross, discount: contractDiscount, net: contractNet, tax: contractTax, periodNet };
 }
 
 function labels(language: ProposalLanguage) {
